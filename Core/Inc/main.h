@@ -57,6 +57,32 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define BarometerInterrupt_Pin GPIO_PIN_2
+#define BarometerInterrupt_GPIO_Port GPIOE
+#define GyroInterrupt1_Pin GPIO_PIN_3
+#define GyroInterrupt1_GPIO_Port GPIOE
+#define GyroInterrupt2_Pin GPIO_PIN_4
+#define GyroInterrupt2_GPIO_Port GPIOE
+#define AccelerometerInterrupt1_Pin GPIO_PIN_5
+#define AccelerometerInterrupt1_GPIO_Port GPIOE
+#define AccelerometerInterrupt2_Pin GPIO_PIN_6
+#define AccelerometerInterrupt2_GPIO_Port GPIOE
+#define TemperatureAlert_Pin GPIO_PIN_13
+#define TemperatureAlert_GPIO_Port GPIOC
+#define Boot1_Pin GPIO_PIN_2
+#define Boot1_GPIO_Port GPIOB
+#define Servo2_Pin GPIO_PIN_9
+#define Servo2_GPIO_Port GPIOE
+#define Servo1_Pin GPIO_PIN_11
+#define Servo1_GPIO_Port GPIOE
+#define PWM1_Pin GPIO_PIN_13
+#define PWM1_GPIO_Port GPIOE
+#define PWM2_Pin GPIO_PIN_14
+#define PWM2_GPIO_Port GPIOE
+#define ETH_NRST_Pin GPIO_PIN_2
+#define ETH_NRST_GPIO_Port GPIOD
+#define SDCardDetect_Pin GPIO_PIN_1
+#define SDCardDetect_GPIO_Port GPIOE
 
 /* USER CODE BEGIN Private defines */
 
