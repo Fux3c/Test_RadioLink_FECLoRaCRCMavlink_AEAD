@@ -1,0 +1,30 @@
+.PHONY: all build cmake clean format
+
+BUILD_DIR := build
+BUILD_TYPE ?= Debug
+
+all: build
+
+${BUILD_DIR}/Makefile:
+	cmake \
+		-B ${BUILD_DIR} \
+		-DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
+		-DCMAKE_TOOLCHAIN_FILE=gcc-arm-none-eabi.cmake \
+		-DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+		-DDUMP_ASM=OFF \
+		-G "MinGW Makefiles"
+
+cmake: ${BUILD_DIR}/Makefile
+
+build: cmake
+	$(MAKE) -C ${BUILD_DIR} --no-print-directory
+
+
+
+SRCS := $(shell dir -s *.cpp)
+# %.format: %
+# 	clang-format -i $<
+# format: $(addsuffix .format, ${SRCS})
+
+clean:
+	rmdir /S /Q $(BUILD_DIR)
