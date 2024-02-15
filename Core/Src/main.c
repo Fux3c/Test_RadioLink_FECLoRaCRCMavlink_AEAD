@@ -96,7 +96,7 @@ int main(void)
   MX_ADC1_Init();
   MX_CAN1_Init();
   MX_CRC_Init();
-  MX_ETH_Init();
+  //MX_ETH_Init();
   MX_I2C1_Init();
   MX_RNG_Init();
   MX_SPI2_Init();
