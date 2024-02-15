@@ -1,9 +1,9 @@
-.PHONY: all build cmake clean format
+.PHONY: all build flash test cmake clean format
 
 BUILD_DIR := build
 BUILD_TYPE ?= Debug
 
-all: build
+all: build flash
 
 ${BUILD_DIR}/Makefile:
 	cmake \
@@ -19,6 +19,8 @@ cmake: ${BUILD_DIR}/Makefile
 build: cmake
 	$(MAKE) -C ${BUILD_DIR} --no-print-directory
 
+flash: 
+	STM32_Programmer_CLI.exe -c port=SWD -w build\NRS_FC-Verification.elf 0x08008000 -rst
 
 
 SRCS := $(shell dir -s *.cpp)
