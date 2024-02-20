@@ -3,6 +3,12 @@ This repository serves the purpose of hosting examples to test and verify functi
 
 This repository based of Matej Blagšič's [repository](https://github.com/prtzl/stm32-cmake/tree/master) for cmake with stm32.
 
+## Clone
+```shell
+git clone --recurse-submodules -j8 git@github.com:USN-Horizon/NRS-Flight-Computer-Verification.git
+```
+> **_NOTE:_** Recurse submodules makes sure to include the contents of [HAM](https://github.com/USN-Horizon/HAM).
+
 ## Dependencies
 ### Windows
 #### Required
