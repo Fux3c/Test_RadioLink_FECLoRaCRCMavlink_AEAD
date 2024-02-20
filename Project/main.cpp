@@ -1,46 +1,33 @@
-#include "main.h"
-#include <Project/main.hpp>
+#include "main.hpp"
 
-struct Led
-{
-    explicit Led(GPIO_TypeDef* t_gpio, uint16_t t_pin)
-        : gpio(t_gpio)
-        , pin(t_pin)
-    {
-    }
-    void on()
-    {
-        HAL_GPIO_WritePin(gpio, pin, GPIO_PIN_SET);
-    }
-    void off()
-    {
-        HAL_GPIO_WritePin(gpio, pin, GPIO_PIN_RESET);
-    }
-    void toggle()
-    {
-        HAL_GPIO_TogglePin(gpio, pin);
-    }
-    auto state() -> bool
-    {
-        return HAL_GPIO_ReadPin(gpio, pin);
-    }
+#include <Uart.hpp>
+#include <Printer.hpp>
+#include <Gpio.hpp>
 
-private:
-    GPIO_TypeDef* gpio;
-    uint16_t pin;
-};
-Led led = Led(GPIOE, GPIO_PIN_11);
+#include <string>
+#include <memory>
 
-/// @brief Initialization function, only ran once.
+#include "NRS-FC-BoardDefinitions.hpp"
+
+HAM::Uart usart1 {huart1};
+HAM::Printer printer{usart1};
+
+namespace NRS = NotRocketScienceFlightComputer;
+
+/**
+ * @brief Initialization function, only ran once.
+*/
 void init()
 {
-    
 }
-
-/// @brief Main function to be run continuously.
+/**
+ * @brief Main function to be run continuously.
+ * 
+ */
 void loop()
 {
-    led.toggle();
+    static HAM::Gpio pin = HAM::Gpio{NRS::Servo1};
+    printer % HAM::PrintType::Log << "This way up " << 43;
+    pin.Toggle();
     HAL_Delay(500);
-
 }
