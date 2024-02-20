@@ -1,5 +1,10 @@
 ### NRS ###
 build/
+.vscode/c_cpp_properties.json
+.vscode/settings.json
+Documentation/output/
+### MacOS ###
+.DS_Store
 ### CMake ###
 CMakeLists.txt.user
 CMakeCache.txt
