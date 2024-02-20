@@ -2,7 +2,6 @@ set(CMAKE_SYSTEM_NAME Generic)
 set(CMAKE_SYSTEM_PROCESSOR arm)
 
 set(TOOLCHAIN_PREFIX arm-none-eabi-)
-#set(TOOLCHAIN_PREFIX "C:/ST/STM32CubeCLT/GNU-tools-for-STM32/bin/arm-none-eabi-")
 set(FLAGS
     "-fdata-sections -ffunction-sections --specs=nano.specs -Wl,--gc-sections")
 set(CPP_FLAGS
