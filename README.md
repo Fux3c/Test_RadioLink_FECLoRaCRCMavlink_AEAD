@@ -13,7 +13,7 @@ git clone --recurse-submodules -j8 git@github.com:USN-Horizon/NRS-Flight-Compute
 ### Windows
 #### Required
 - Git `winget install git.git`
-- [MINGW](https://sourceforge.net/projects/mingw-w64/files/mingw-w64/mingw-w64-release/) (MinGW MakeFiles)
+- [MINGW](https://sourceforge.net/projects/mingw/files/latest/download)
 - [STM32 CubeCLT](https://www.st.com/en/development-tools/stm32cubeclt.html)
 - [cmake](https://cmake.org/download/)
 - pyocd `pip install pyocd`
