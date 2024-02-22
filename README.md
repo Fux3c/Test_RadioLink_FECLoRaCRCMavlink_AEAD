@@ -14,20 +14,20 @@ git clone --recurse-submodules -j8 git@github.com:USN-Horizon/NRS-Flight-Compute
 #### Required
 - Git `winget install git.git`
 - [STM32 CubeCLT](https://www.st.com/en/development-tools/stm32cubeclt.html)
-    - etter STM32 CubeCLT er installert må man legge inn i enviroment path følg oppskriften på lenken under:
+    - after STM32 CubeCLT is installed, we have to add enviroment paths, follow the guide in the link under:
     - https://helpdeskgeek.com/windows-10/add-windows-path-environment-variable/
-    - eksempler på filstier som skal legges inn: (gjerne sjekk om filstiene allerede ligger der)
+    - examples of file paths: (check before if the paths already exist in the enviroment)
         - C:\ST\STM32CubeCLT\STM32CubeProgrammer\bin
         - C:\ST\STM32CubeCLT\GNU-tools-for-STM32\bin
         - C:\Program Files (x86)\GnuWin32\bin
 - [cmake](https://cmake.org/download/) 
-    - under Binary distributions: velg "Windows x64 installer" og velg "Add CMake to the system PATH for the current user".   
+    - under Binary distributions: choose "Windows x64 installer" and choose "Add CMake to the system PATH for the current user".   
 ![alt text](pictures/cmake_valg.png)
 - pyocd `pip install pyocd`
-    - om pip ikke er installert: `python -m ensurepip`
+    - if pip is not installed `python -m ensurepip`
 #### Optional
 - [MINGW](https://sourceforge.net/projects/mingw/files/latest/download)
-    - MINGW skal ikke være nødvendig om Qt er lastet ned.
+    - MINGW should not be necessary if Qt is installed
 - [STM32 CubeMX](https://www.st.com/en/development-tools/stm32cubemx.html)
 
 
