@@ -8,11 +8,11 @@
 #include <memory>
 
 #include "NRS-FC-BoardDefinitions.hpp"
-
-HAM::Uart usart1 {huart1};
-HAM::Printer printer{usart1};
-
 namespace NRS = NotRocketScienceFlightComputer;
+
+HAM::Uart USBUart {NRS::USBUartDefinition};
+HAM::Printer printer{USBUart};
+
 
 /**
  * @brief Initialization function, only ran once.
@@ -27,7 +27,7 @@ void init()
 void loop()
 {
     static HAM::Gpio pin = HAM::Gpio{NRS::Servo1};
-    printer % HAM::PrintType::Log << "This way up " << 43;
+    printer % HAM::PrintType::Log << "This way up " << 43 << "\n";
     pin.Toggle();
     HAL_Delay(500);
 }
