@@ -14,8 +14,12 @@ git clone --recurse-submodules -j8 git@github.com:USN-Horizon/NRS-Flight-Compute
 #### Required
 - Git `winget install git.git`
 - [STM32 CubeCLT](https://www.st.com/en/development-tools/stm32cubeclt.html)
-    - etter STM32 CubeCLT er installert:
+    - etter STM32 CubeCLT er installert må man legge inn i enviroment path følg oppskriften på lenken under:
     - https://helpdeskgeek.com/windows-10/add-windows-path-environment-variable/
+    - eksempler på filstier som skal legges inn: (gjerne sjekk om filstiene allerede ligger der)
+        - C:\ST\STM32CubeCLT\STM32CubeProgrammer\bin
+        - C:\ST\STM32CubeCLT\GNU-tools-for-STM32\bin
+        - C:\Program Files (x86)\GnuWin32\bin
 - [cmake](https://cmake.org/download/) 
     - under Binary distributions: velg "Windows x64 installer" og velg "Add CMake to the system PATH for the current user".   
 ![alt text](pictures/cmake_valg.png)
