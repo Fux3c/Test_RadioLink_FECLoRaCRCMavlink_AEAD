@@ -13,11 +13,21 @@ git clone --recurse-submodules -j8 git@github.com:USN-Horizon/NRS-Flight-Compute
 ### Windows
 #### Required
 - Git `winget install git.git`
-- [MINGW](https://sourceforge.net/projects/mingw-w64/files/mingw-w64/mingw-w64-release/) (MinGW MakeFiles)
 - [STM32 CubeCLT](https://www.st.com/en/development-tools/stm32cubeclt.html)
-- [cmake](https://cmake.org/download/)
+    - after STM32 CubeCLT is installed, we have to add enviroment paths, follow the guide in the link under:
+    - https://helpdeskgeek.com/windows-10/add-windows-path-environment-variable/
+    - examples of file paths: (check before if the paths already exist in the enviroment)
+        - C:\ST\STM32CubeCLT\STM32CubeProgrammer\bin
+        - C:\ST\STM32CubeCLT\GNU-tools-for-STM32\bin
+        - C:\Program Files (x86)\GnuWin32\bin
+- [cmake](https://cmake.org/download/) 
+    - under Binary distributions: choose "Windows x64 installer" and choose "Add CMake to the system PATH for the current user".   
+![alt text](pictures/cmake_valg.png)
 - pyocd `pip install pyocd`
+    - if pip is not installed `python -m ensurepip`
 #### Optional
+- [MINGW](https://sourceforge.net/projects/mingw/files/latest/download)
+    - MINGW should not be necessary if Qt is installed
 - [STM32 CubeMX](https://www.st.com/en/development-tools/stm32cubemx.html)
 
 

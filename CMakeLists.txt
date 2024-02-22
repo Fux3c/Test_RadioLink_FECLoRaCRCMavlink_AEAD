@@ -46,10 +46,10 @@ set(PROJECT_INCLUDE_DIRECTORIES
     ${CMAKE_CURRENT_SOURCE_DIR})
 
 set(HAM_INCLUDE_DIRECTORIES
-    ${CMAKE_CURRENT_SOURCE_DIR}/HorizonAbstractionMiddleware/
-    ${CMAKE_CURRENT_SOURCE_DIR}/HorizonAbstractionMiddleware/Uart
-    ${CMAKE_CURRENT_SOURCE_DIR}/HorizonAbstractionMiddleware/Gpio
-    ${CMAKE_CURRENT_SOURCE_DIR}/HorizonAbstractionMiddleware/Printer
+    ${CMAKE_CURRENT_SOURCE_DIR}/HAM/
+    ${CMAKE_CURRENT_SOURCE_DIR}/HAM/Uart
+    ${CMAKE_CURRENT_SOURCE_DIR}/HAM/Gpio
+    ${CMAKE_CURRENT_SOURCE_DIR}/HAM/Printer
     )
 
 
@@ -63,7 +63,7 @@ file(GLOB_RECURSE PROJECT_SOURCES CONFIGURE_DEPENDS
     ${PROJECT_DIR}/*.c)
 
 file(GLOB_RECURSE HAM_SOURCES CONFIGURE_DEPENDS
-    ${CMAKE_CURRENT_SOURCE_DIR}/HorizonAbstractionMiddleware/*.cpp)
+    ${CMAKE_CURRENT_SOURCE_DIR}/HAM/*.cpp)
 
 
 add_executable(${EXECUTABLE}
