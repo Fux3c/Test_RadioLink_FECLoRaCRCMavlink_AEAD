@@ -16,6 +16,7 @@ git clone --recurse-submodules -j8 git@github.com:USN-Horizon/NRS-Flight-Compute
 - [MINGW](https://sourceforge.net/projects/mingw/files/latest/download)
 - [STM32 CubeCLT](https://www.st.com/en/development-tools/stm32cubeclt.html)
 - [cmake](https://cmake.org/download/)
+- ![alt text](pictures/cmake_valg.png)
 - pyocd `pip install pyocd`
 #### Optional
 - [STM32 CubeMX](https://www.st.com/en/development-tools/stm32cubemx.html)
