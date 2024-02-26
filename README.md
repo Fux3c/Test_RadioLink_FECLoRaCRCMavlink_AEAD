@@ -25,9 +25,12 @@ git clone --recurse-submodules -j8 git@github.com:USN-Horizon/NRS-Flight-Compute
 ![alt text](pictures/cmake_valg.png)
 - pyocd `pip install pyocd`
     - if pip is not installed `python -m ensurepip`
+- [Make](https://gnuwin32.sourceforge.net/packages/make.htm) Choose setup binary
 #### Optional
 - [MINGW](https://sourceforge.net/projects/mingw/files/latest/download)
-    - MINGW should not be necessary if Qt is installed
+    - ![MinGW Installation Manager](mingw.png)
+> **_NOTE:_** MINGW should not be necessary if Qt is installed.
+
 - [STM32 CubeMX](https://www.st.com/en/development-tools/stm32cubemx.html)
 
 

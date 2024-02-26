@@ -1,6 +1,6 @@
 .PHONY: all build flash test cmake clean format doc
 
-OS := $(shell uname)
+# OS := $(shell uname)
 
 BUILD_DIR := build
 BUILD_TYPE ?= Debug
@@ -24,14 +24,18 @@ build: cmake
 flash: 
 	STM32_Programmer_CLI -c port=SWD -w build/NRS_FC-Verification.elf 0x08008000 -rst
 
+flash-uart:
+	STM32_Programmer_CLI -c port=COM3 br=115200 -w build/NRS_FC-Verification.elf 0x08008000 -rst
 
-SRCS := $(shell find . -name "*.cpp")
+
+
+# SRCS := $(shell find . -name "*.cpp")
 # %.format: %
 # 	clang-format -i $<
 # format: $(addsuffix .format, ${SRCS})
 
 clean:
-	rm -r build 
+	rmdir build /s /q 
 
 doc:
-	cd HorizonAbstractionMiddleware/Documentation/doxygen && rm -r output && doxygen
+	cd HAM/Documentation/doxygen && doxygen
