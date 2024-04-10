@@ -28,6 +28,7 @@ void loop()
 {
     static HAM::Gpio pin = HAM::Gpio{NRS::Servo1};
     printer % HAM::PrintType::Log << "This way up " << 43 << "\n";
+    printer << "Test\n";
     pin.Toggle();
     HAL_Delay(500);
 }
