@@ -58,77 +58,73 @@ void setup() {
   pinMode(SRG1_STCP,  OUTPUT);
   pinMode(SRG1_SER,   OUTPUT);
   pinMode(SRG1_OE,    OUTPUT);
+  pinMode(UART_RX,    INPUT);
+  pinMode(UART_TX,    OUTPUT);
+  pinMode(BAT_CS,     INPUT);
+  pinMode(BAT_VS,     INPUT);
+  pinMode(BAT_NTC,    INPUT);
+  pinMode(SERVO1_CS,  INPUT);
+  pinMode(AUX_CS,     INPUT);
 
-  pinMode(UART_RX, INPUT);
-  pinMode(UART_TX, OUTPUT);
-
-  pinMode(BAT_CS, INPUT);
-  pinMode(BAT_VS, INPUT);
-  pinMode(BAT_NTC, INPUT);
-  pinMode(SERVO1_CS, INPUT);
-  pinMode(AUX_CS, INPUT);
-
-  // Serial Connection
+  // UART Initialisation 
   Serial.begin(9600);
   Serial.println();
   Serial.println("PDU BOOTING...");
 }
 
-
 void loop() {
-  // ADC Reading
-  static int ADC_READ[PWR_CIRCUITS] = {0};
-  
-  // ** Functionality to save data from ADC to ADC_READ[]
-  ADC_READ[0] = analogRead(SERVO1_CS);
+  // ADC Readings
+  static int ADC_DATA[PWR_CIRCUITS] = {0};
 
   // Output Register Writing
   static char enable_register = 0x00;
+
+  // Serial instructions handler
   if(Serial.available()){
     int data = Serial.read();
     switch(data){
+      
+      case 0x00: // Not in use
+        break;
+      case 0x01: // Not in use
+        break;
+      
       // Enable and Disable Power Circuits
-      case 0x00:
-        bitWrite(enable_register, 0, 0);
-        break;
-      case 0x01:
-        bitWrite(enable_register, 0, 1); 
-        break;
-      case 0x10:
-        bitWrite(enable_register, 1, 0);
-        break;
-      case 0x11:
-        bitWrite(enable_register, 1, 1);
-        break;
-      case 0x20:
+      case 0x10: //CH1 Disable
         bitWrite(enable_register, 2, 0);
         break;
-      case 0x21:
+      case 0x11: //CH1 Enable
         bitWrite(enable_register, 2, 1);
         break;
-      case 0x30:
+      case 0x20: //CH2 Disable
         bitWrite(enable_register, 3, 0);
         break;
-      case 0x31:
+      case 0x21: //CH2 Enable
         bitWrite(enable_register, 3, 1);
         break;
-      case 0x40:
+      case 0x30: //CH3 Disable
         bitWrite(enable_register, 4, 0);
         break;
-      case 0x41:
+      case 0x31: //CH3 Enable
         bitWrite(enable_register, 4, 1);
         break;
-      case 0x50:
+      case 0x40: //CH4 Disable
         bitWrite(enable_register, 5, 0);
         break;
-      case 0x51:
+      case 0x41: //CH4 Enable
         bitWrite(enable_register, 5, 1);
         break;
-      case 0x60:
+      case 0x50: //CH5 Disable
         bitWrite(enable_register, 6, 0);
         break;
-      case 0x61:
+      case 0x51: //CH5 Enable
         bitWrite(enable_register, 6, 1);
+        break;
+      case 0x60: //CH6 Disable
+        bitWrite(enable_register, 7, 0);
+        break;
+      case 0x61: //CH6 Enable
+        bitWrite(enable_register, 7, 1);
         break;
       
       // All Circuits Enable/Disable
@@ -153,10 +149,10 @@ void loop() {
 
   if (millis() - lastClock > PWR_OCP_TIME){
     for (int i = 0; i < PWR_CIRCUITS; i++){
-      if (ADC_READ[i] > PWR_OCP_THRESHOLD[i] && OC_CONDITIONS[i] < 10){
+      if (ADC_DATA[i] > PWR_OCP_THRESHOLD[i] && OC_CONDITIONS[i] < 10){
         OC_CONDITIONS[i] += 1;
         if(OC_CONDITIONS[i] >= PWR_OCP_LIMIT){
-          // Shutdown the Circuits
+          // TODO: Shutdown the Circuits
         }
       } else if (OC_CONDITIONS[i] > 1){
         OC_CONDITIONS[i] -= 1;
@@ -164,28 +160,23 @@ void loop() {
     }
     lastClock = millis();
   }
-
 }
 
 void registerWrite(char data){ // Shift register functionality
 
   int regSize = 8; // bits
   
-    for (int i = 0; i < regSize; i++){
+  for (int i = 0; i < regSize; i++){
     digitalWrite(SRG1_SER, bitRead(data, i));
-    //delayMicroseconds(1);
     digitalWrite(SRG1_SHCP, HIGH);
-    //delay(1);
     digitalWrite(SRG1_SHCP, LOW);
-    //delay(1); // Propagation delay 
   }
   
   digitalWrite(SRG1_STCP, HIGH);
-  //delay(1);
   digitalWrite(SRG1_STCP, LOW);
 }
 
-void sendData(){
-  //Function for sending data over serial to flight computer
+void sendData(){ //Function for sending data over serial to flight computer
+  // TODO
   return 0;
 }
