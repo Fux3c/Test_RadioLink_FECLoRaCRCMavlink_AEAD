@@ -9,6 +9,9 @@
 
 #include <SPI.h>
 #include <SD.h>
+#include <Wire.h>
+
+#define debug_mode false
 
 // --- Pin Definitions ---
 // I2C
@@ -40,6 +43,7 @@
 
 // POWER CIRCUIT PARAMETERS 
 #define PWR_CIRCUITS 6 // Number of Circuits
+#define ADC_CHANNELS 8 // Number of Channels on the ADC
 #define PWR_OCP_TIME 100 // Time(ms) between Over Current Protection Samples
 #define PWR_OCP_LIMIT 10 // Number of Over Current Violations permitted before circuit shutdown.
 const int PWR_OCP_THRESHOLD[PWR_CIRCUITS] = {1000, 512, 512, 512, 512, 512};
@@ -65,7 +69,7 @@ void sendData(){ //Function for sending data over serial to flight computer
   return 0;
 }
 
-void update_ocp(int adc_data[PWR_CIRCUITS]){ // Over Current Protection
+void update_ocp(int adc_data[ADC_CHANNELS]){ // Over Current Protection
   static unsigned int OC_CONDITIONS[PWR_CIRCUITS] = {0}; // Over-Current Counter for 6 circuits.
   static unsigned long lastClock = 0;
 
@@ -74,6 +78,12 @@ void update_ocp(int adc_data[PWR_CIRCUITS]){ // Over Current Protection
       if (adc_data[i] > PWR_OCP_THRESHOLD[i] && OC_CONDITIONS[i] < 10){
         OC_CONDITIONS[i] += 1;
         if(OC_CONDITIONS[i] >= PWR_OCP_LIMIT){
+          
+          #if debug_mode //OCP warning on UART
+            Serial.print("OCP: ");
+            Serial.println(i);
+          #endif
+
           // TODO: Shutdown the Circuits
         }
       } else if (OC_CONDITIONS[i] > 1){
@@ -96,13 +106,13 @@ void setup() {
   pinMode(SRG1_STCP,  OUTPUT);
   pinMode(SRG1_SER,   OUTPUT);
   pinMode(SRG1_OE,    OUTPUT);
-  pinMode(UART_RX,    INPUT);
+  pinMode(UART_RX,    INPUT );
   pinMode(UART_TX,    OUTPUT);
-  pinMode(BAT_CS,     INPUT);
-  pinMode(BAT_VS,     INPUT);
-  pinMode(BAT_NTC,    INPUT);
-  pinMode(SERVO1_CS,  INPUT);
-  pinMode(AUX_CS,     INPUT);
+  pinMode(BAT_CS,     INPUT );
+  pinMode(BAT_VS,     INPUT );
+  pinMode(BAT_NTC,    INPUT );
+  pinMode(SERVO1_CS,  INPUT );
+  pinMode(AUX_CS,     INPUT );
 
   // UART Initialisation 
   Serial.begin(9600);
@@ -111,6 +121,10 @@ void setup() {
 }
 
 void loop() {
+  static unsigned long deltaTime = 0;
+
+  deltaTime = millis();
+  
   // ADC Readings
   static int ADC_DATA[PWR_CIRCUITS] = {0};
 
@@ -121,47 +135,41 @@ void loop() {
   if(Serial.available()){
     int data = Serial.read();
     switch(data){
-      
-      case 0x00: // Not in use
-        break;
-      case 0x01: // Not in use
-        break;
-      
       // Enable and Disable Power Circuits
-      case 0x10: //CH1 Disable
+      case 0x00: //CH0 Disable
         bitWrite(enable_register, 2, 0);
         break;
-      case 0x11: //CH1 Enable
+      case 0x01: //CH0 Enable
         bitWrite(enable_register, 2, 1);
         break;
-      case 0x20: //CH2 Disable
+      case 0x10: //CH1 Disable
         bitWrite(enable_register, 3, 0);
         break;
-      case 0x21: //CH2 Enable
+      case 0x11: //CH1 Enable
         bitWrite(enable_register, 3, 1);
         break;
-      case 0x30: //CH3 Disable
+      case 0x20: //CH2 Disable
         bitWrite(enable_register, 4, 0);
         break;
-      case 0x31: //CH3 Enable
+      case 0x21: //CH2 Enable
         bitWrite(enable_register, 4, 1);
         break;
-      case 0x40: //CH4 Disable
+      case 0x30: //CH3 Disable
         bitWrite(enable_register, 5, 0);
         break;
-      case 0x41: //CH4 Enable
+      case 0x31: //CH3 Enable
         bitWrite(enable_register, 5, 1);
         break;
-      case 0x50: //CH5 Disable
+      case 0x40: //CH4 Disable
         bitWrite(enable_register, 6, 0);
         break;
-      case 0x51: //CH5 Enable
+      case 0x41: //CH4 Enable
         bitWrite(enable_register, 6, 1);
         break;
-      case 0x60: //CH6 Disable
+      case 0x50: //CH5 Disable
         bitWrite(enable_register, 7, 0);
         break;
-      case 0x61: //CH6 Enable
+      case 0x51: //CH5 Enable
         bitWrite(enable_register, 7, 1);
         break;
       
@@ -181,6 +189,13 @@ void loop() {
     registerWrite(enable_register);
     update_ocp(ADC_DATA);
   }
+ 
+  deltaTime = millis() - deltaTime;
+  
+  #if debug_mode
+    Serial.print("dT: ");
+    Serial.println(deltaTime);
+  #endif
 }
 
 
