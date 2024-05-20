@@ -46,6 +46,44 @@ const int PWR_OCP_THRESHOLD[PWR_CIRCUITS] = {1000, 512, 512, 512, 512, 512};
 
 void reset() {}
 
+void registerWrite(char data){ // Shift register functionality
+
+  const unsigned int regSize = 8; // bits
+  
+  for (int i = 0; i < regSize; i++){
+    digitalWrite(SRG1_SER, bitRead(data, i));
+    digitalWrite(SRG1_SHCP, HIGH);
+    digitalWrite(SRG1_SHCP, LOW);
+  }
+  
+  digitalWrite(SRG1_STCP, HIGH);
+  digitalWrite(SRG1_STCP, LOW);
+}
+
+void sendData(){ //Function for sending data over serial to flight computer
+  // TODO
+  return 0;
+}
+
+void update_ocp(int adc_data[PWR_CIRCUITS]){ // Over Current Protection
+  static unsigned int OC_CONDITIONS[PWR_CIRCUITS] = {0}; // Over-Current Counter for 6 circuits.
+  static unsigned long lastClock = 0;
+
+  if (millis() - lastClock > PWR_OCP_TIME){
+    for (int i = 0; i < PWR_CIRCUITS; i++){
+      if (adc_data[i] > PWR_OCP_THRESHOLD[i] && OC_CONDITIONS[i] < 10){
+        OC_CONDITIONS[i] += 1;
+        if(OC_CONDITIONS[i] >= PWR_OCP_LIMIT){
+          // TODO: Shutdown the Circuits
+        }
+      } else if (OC_CONDITIONS[i] > 1){
+        OC_CONDITIONS[i] -= 1;
+      }
+    }
+    lastClock = millis();
+  }
+}
+
 void setup() {
 
   // Setup for Shift Register 1 (set OE to High to wait for )
@@ -141,42 +179,9 @@ void loop() {
         break;
     }
     registerWrite(enable_register);
-  }
-
-  // Over Current Protection
-  static unsigned int OC_CONDITIONS[PWR_CIRCUITS] = {0}; // Over-Current Counter for 6 circuits.
-  static unsigned long lastClock = 0;
-
-  if (millis() - lastClock > PWR_OCP_TIME){
-    for (int i = 0; i < PWR_CIRCUITS; i++){
-      if (ADC_DATA[i] > PWR_OCP_THRESHOLD[i] && OC_CONDITIONS[i] < 10){
-        OC_CONDITIONS[i] += 1;
-        if(OC_CONDITIONS[i] >= PWR_OCP_LIMIT){
-          // TODO: Shutdown the Circuits
-        }
-      } else if (OC_CONDITIONS[i] > 1){
-        OC_CONDITIONS[i] -= 1;
-      }
-    }
-    lastClock = millis();
+    update_ocp(ADC_DATA);
   }
 }
 
-void registerWrite(char data){ // Shift register functionality
 
-  int regSize = 8; // bits
-  
-  for (int i = 0; i < regSize; i++){
-    digitalWrite(SRG1_SER, bitRead(data, i));
-    digitalWrite(SRG1_SHCP, HIGH);
-    digitalWrite(SRG1_SHCP, LOW);
-  }
-  
-  digitalWrite(SRG1_STCP, HIGH);
-  digitalWrite(SRG1_STCP, LOW);
-}
 
-void sendData(){ //Function for sending data over serial to flight computer
-  // TODO
-  return 0;
-}
