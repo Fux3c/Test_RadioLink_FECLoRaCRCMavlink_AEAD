@@ -41,6 +41,11 @@
 #define SRG1_SER 5
 #define SRG1_OE 4 
 
+// ADC PARAMETERS
+#define ADC_ADDR 0b1001000
+const char ADC_CONF_MSB = 0b00000000;
+const char ADC_CONF_LSB = 0b10000011;
+
 // POWER CIRCUIT PARAMETERS 
 #define PWR_CIRCUITS 6 // Number of Circuits
 #define ADC_CHANNELS 8 // Number of Channels on the ADC
@@ -48,7 +53,13 @@
 #define PWR_OCP_LIMIT 10 // Number of Over Current Violations permitted before circuit shutdown.
 const int PWR_OCP_THRESHOLD[PWR_CIRCUITS] = {1000, 512, 512, 512, 512, 512};
 
-void reset() {}
+void reset() {
+  // TODO
+}
+
+void adcRead(int data[ADC_CHANNELS]){ // Reads from built-in ADC and external ADC 
+  // TODO
+}
 
 void registerWrite(char data){ // Shift register functionality
 
@@ -66,10 +77,9 @@ void registerWrite(char data){ // Shift register functionality
 
 void sendData(){ //Function for sending data over serial to flight computer
   // TODO
-  return 0;
 }
 
-void update_ocp(int adc_data[ADC_CHANNELS]){ // Over Current Protection
+void updateOCP(int adc_data[ADC_CHANNELS]){ // Over Current Protection
   static unsigned int OC_CONDITIONS[PWR_CIRCUITS] = {0}; // Over-Current Counter for 6 circuits.
   static unsigned long lastClock = 0;
 
@@ -96,7 +106,7 @@ void update_ocp(int adc_data[ADC_CHANNELS]){ // Over Current Protection
 
 void setup() {
 
-  // Setup for Shift Register 1 (set OE to High to wait for )
+  // Setup for Shift Register 1 (set OE to High to wait for setup)
   digitalWrite(SRG1_OE, HIGH);
   registerWrite(0x00);
   digitalWrite(SRG1_OE, LOW);
@@ -118,6 +128,15 @@ void setup() {
   Serial.begin(9600);
   Serial.println();
   Serial.println("PDU BOOTING...");
+
+  // I2C Initialisation
+  Wire.begin();
+  Wire.beginTransmission(ADC_ADDR);
+  Wire.write(0x01); // Write to configuration register
+  Wire.write(ADC_CONF_MSB);
+  Wire.write(ADC_CONF_LSB);
+  Wire.endTransmission();
+
 }
 
 void loop() {
@@ -126,9 +145,9 @@ void loop() {
   deltaTime = millis();
   
   // ADC Readings
-  static int ADC_DATA[PWR_CIRCUITS] = {0};
+  static int ADC_DATA[ADC_CHANNELS] = {0};
 
-  // Output Register Writing
+  // Register for Power Circuit States (On=1/Off=0)
   static char enable_register = 0x00;
 
   // Serial instructions handler
@@ -187,7 +206,7 @@ void loop() {
         break;
     }
     registerWrite(enable_register);
-    update_ocp(ADC_DATA);
+    updateOCP(ADC_DATA);
   }
  
   deltaTime = millis() - deltaTime;
