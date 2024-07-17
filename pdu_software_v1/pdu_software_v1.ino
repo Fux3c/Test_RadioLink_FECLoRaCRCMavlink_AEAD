@@ -11,7 +11,7 @@
 #include <SD.h>
 #include <Wire.h>
 
-#define debug_mode false
+#define debug_mode true
 
 // --- Pin Definitions ---
 // I2C
@@ -73,6 +73,10 @@ void registerWrite(char data){ // Shift register functionality
   
   digitalWrite(SRG1_STCP, HIGH);
   digitalWrite(SRG1_STCP, LOW);
+  
+  #if debug_mode
+    Serial.println("Output Set");
+  #endif 
 }
 
 void sendData(){ //Function for sending data over serial to flight computer
@@ -108,7 +112,7 @@ void setup() {
 
   // Setup for Shift Register 1 (set OE to High to wait for setup)
   digitalWrite(SRG1_OE, HIGH);
-  registerWrite(0x00);
+  registerWrite(0xFF);
   digitalWrite(SRG1_OE, LOW);
 
   // Pin Mode Definitions
@@ -128,21 +132,23 @@ void setup() {
   Serial.begin(9600);
   Serial.println();
   Serial.println("PDU BOOTING...");
+  
+
 
   // I2C Initialisation
-  Wire.begin();
-  Wire.beginTransmission(ADC_ADDR);
-  Wire.write(0x01); // Write to configuration register
-  Wire.write(ADC_CONF_MSB);
-  Wire.write(ADC_CONF_LSB);
-  Wire.endTransmission();
+  // Wire.begin();
+  // Wire.beginTransmission(ADC_ADDR);
+  // Wire.write(0x01); // Write to configuration register
+  // Wire.write(ADC_CONF_MSB);
+  // Wire.write(ADC_CONF_LSB);
+  // Wire.endTransmission();
 
 }
 
 void loop() {
   static unsigned long deltaTime = 0;
 
-  deltaTime = millis();
+  deltaTime = micros();
   
   // ADC Readings
   static int ADC_DATA[ADC_CHANNELS] = {0};
@@ -206,14 +212,17 @@ void loop() {
         break;
     }
     registerWrite(enable_register);
-    updateOCP(ADC_DATA);
+    //updateOCP(ADC_DATA);
   }
  
-  deltaTime = millis() - deltaTime;
+  deltaTime = micros() - deltaTime;
   
   #if debug_mode
     Serial.print("dT: ");
-    Serial.println(deltaTime);
+    Serial.print(deltaTime);
+    Serial.print(", EREG: ");
+    Serial.print(enable_register, BIN);
+    Serial.println();
   #endif
 }
 
