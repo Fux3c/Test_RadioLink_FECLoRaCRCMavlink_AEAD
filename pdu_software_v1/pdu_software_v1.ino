@@ -133,8 +133,6 @@ void setup() {
   Serial.println();
   Serial.println("PDU BOOTING...");
   
-
-
   // I2C Initialisation
   // Wire.begin();
   // Wire.beginTransmission(ADC_ADDR);
@@ -142,11 +140,10 @@ void setup() {
   // Wire.write(ADC_CONF_MSB);
   // Wire.write(ADC_CONF_LSB);
   // Wire.endTransmission();
-
 }
 
 void loop() {
-  static unsigned long deltaTime = 0;
+  static unsigned long deltaTime;
 
   deltaTime = micros();
   
@@ -161,48 +158,48 @@ void loop() {
     int data = Serial.read();
     switch(data){
       // Enable and Disable Power Circuits
-      case 0x00: //CH0 Disable
+      case /*0x00*/ 0x41: //CH0 Disable
         bitWrite(enable_register, 2, 0);
         break;
-      case 0x01: //CH0 Enable
+      case /*0x01*/ 0x51: //CH0 Enable
         bitWrite(enable_register, 2, 1);
         break;
-      case 0x10: //CH1 Disable
+      case /*0x10*/ 0x53: //CH1 Disable
         bitWrite(enable_register, 3, 0);
         break;
-      case 0x11: //CH1 Enable
+      case /*0x11*/ 0x57: //CH1 Enable
         bitWrite(enable_register, 3, 1);
         break;
-      case 0x20: //CH2 Disable
+      case /*0x20*/ 0x44: //CH2 Disable
         bitWrite(enable_register, 4, 0);
         break;
-      case 0x21: //CH2 Enable
+      case /*0x21*/ 0x45: //CH2 Enable
         bitWrite(enable_register, 4, 1);
         break;
-      case 0x30: //CH3 Disable
+      case /*0x30*/ 0x46: //CH3 Disable
         bitWrite(enable_register, 5, 0);
         break;
-      case 0x31: //CH3 Enable
+      case /*0x31*/ 0x52: //CH3 Enable
         bitWrite(enable_register, 5, 1);
         break;
-      case 0x40: //CH4 Disable
+      case /*0x40*/ 0x47: //CH4 Disable
         bitWrite(enable_register, 6, 0);
         break;
-      case 0x41: //CH4 Enable
+      case /*0x41*/ 0x54: //CH4 Enable
         bitWrite(enable_register, 6, 1);
         break;
-      case 0x50: //CH5 Disable
+      case /*0x50*/ 0x48: //CH5 Disable
         bitWrite(enable_register, 7, 0);
         break;
-      case 0x51: //CH5 Enable
+      case /*0x51*/ 0x59: //CH5 Enable
         bitWrite(enable_register, 7, 1);
         break;
       
       // All Circuits Enable/Disable
-      case 0xF0:
+      case /*0xF0*/ 0x4A:
         enable_register = 0x00;
         break;
-      case 0xF1:
+      case /*0xF1*/ 0x55:
         enable_register = 0xFF;
         break;
 
@@ -218,11 +215,22 @@ void loop() {
   deltaTime = micros() - deltaTime;
   
   #if debug_mode
-    Serial.print("dT: ");
-    Serial.print(deltaTime);
-    Serial.print(", EREG: ");
-    Serial.print(enable_register, BIN);
-    Serial.println();
+    // Debug Monitor
+    const int monitorDelay = 1000; //ms
+    static unsigned long lastMonitor = 0;
+    if (millis() - monitorDelay > lastMonitor){
+      Serial.print("dT: ");
+      Serial.print(deltaTime);
+      Serial.print(", EREG: ");
+      for (int i = 0; i <= 7; i++){
+        Serial.print(bitRead(enable_register, i));
+      }
+
+      Serial.println();
+
+      lastMonitor = millis();
+    }
+
   #endif
 }
 
