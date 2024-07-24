@@ -53,6 +53,13 @@ const char ADC_CONF_LSB = 0b10000011;
 #define PWR_OCP_LIMIT 10 // Number of Over Current Violations permitted before circuit shutdown.
 const int PWR_OCP_THRESHOLD[PWR_CIRCUITS] = {1000, 512, 512, 512, 512, 512};
 
+// PDU Operating Parameters
+bool logMode = false; // Logging to SD Card Enable/Disable
+bool fastMode = false; //Fast Mode for logging (To be used from take-off and onward)
+
+// SD Card File
+File logFile;  
+
 void reset() {
   // TODO
 }
@@ -73,6 +80,7 @@ void registerWrite(char data){ // Shift register functionality
   
   digitalWrite(SRG1_STCP, HIGH);
   digitalWrite(SRG1_STCP, LOW);
+  digitalWrite(SRG1_SER, LOW);
   
   #if debug_mode
     Serial.println("Output Set");
@@ -83,7 +91,7 @@ void sendData(){ //Function for sending data over serial to flight computer
   // TODO
 }
 
-void updateOCP(int adc_data[ADC_CHANNELS]){ // Over Current Protection
+void updateOCP(int adc_data[ADC_CHANNELS], char enable_register){ // Over Current Protection
   static unsigned int OC_CONDITIONS[PWR_CIRCUITS] = {0}; // Over-Current Counter for 6 circuits.
   static unsigned long lastClock = 0;
 
@@ -97,8 +105,11 @@ void updateOCP(int adc_data[ADC_CHANNELS]){ // Over Current Protection
             Serial.print("OCP: ");
             Serial.println(i);
           #endif
+          
+          // Shutdown power circuit
+          bitWrite(enable_register, i+2, 0);
+          registerWrite(enable_register);
 
-          // TODO: Shutdown the Circuits
         }
       } else if (OC_CONDITIONS[i] > 1){
         OC_CONDITIONS[i] -= 1;
@@ -127,12 +138,20 @@ void setup() {
   pinMode(BAT_NTC,    INPUT );
   pinMode(SERVO1_CS,  INPUT );
   pinMode(AUX_CS,     INPUT );
+  pinMode(SPI_SS,     OUTPUT);
+  pinMode(SPI_MOSI,   OUTPUT);
+  pinMode(SPI_MISO,   INPUT );
+  pinMode(SPI_SCK,    OUTPUT);
+
 
   // UART Initialisation 
   Serial.begin(9600);
-  Serial.println();
-  Serial.println("PDU BOOTING...");
   
+  #if debug_mode
+    Serial.println();
+    Serial.println("PDU BOOTING...");
+  #endif
+
   // I2C Initialisation
   // Wire.begin();
   // Wire.beginTransmission(ADC_ADDR);
@@ -140,12 +159,35 @@ void setup() {
   // Wire.write(ADC_CONF_MSB);
   // Wire.write(ADC_CONF_LSB);
   // Wire.endTransmission();
+
+  // SD Card Initialisation
+  if(!SD.begin(SPI_SS))
+    #if debug_mode
+      Serial.println("ERROR: SD initialization failed!");
+    #endif
+  
+  #if debug_mode
+    Serial.println("SD initialization done.");
+  #endif
+
+  logFile = SD.open("log.txt", FILE_WRITE);
+  
+  logFile.print("PDU started in ");
+  logFile.print(millis());
+  logFile.println(" ms");
+  logFile.close();
+
+  #if debug_mode
+    Serial.print(millis());
+    Serial.println(" - Setup Complete.");
+  #endif
+
 }
 
 void loop() {
   static unsigned long deltaTime;
 
-  deltaTime = micros();
+  deltaTime = millis();
   
   // ADC Readings
   static int ADC_DATA[ADC_CHANNELS] = {0};
@@ -207,18 +249,44 @@ void loop() {
       case 0xB0: // Send PDU Telemetry
         sendData();
         break;
+      case /*0xB1*/ 0x4F: // Enable Logging
+        logMode = true;
+        #if debug_mode
+          Serial.println("Enable Log Mode");
+        #endif
+        break;
+      case /*0xB2*/ 0x4C: // Disable Logging
+        logMode = false;
+        #if debug_mode
+          Serial.println("Disable Log Mode");
+        #endif
+        break;
+      case /*0xB3*/ 0xC5: // Enable Fast Log Mode
+        fastMode = true;
+        break;
+      case /*0xB4*/ 0xC6: // Disable Fast Log Mode
+        fastMode = false;
+        break;
     }
     registerWrite(enable_register);
-    //updateOCP(ADC_DATA);
+    updateOCP(ADC_DATA, enable_register);
   }
- 
-  deltaTime = micros() - deltaTime;
+  if (logMode){
+    logFile = SD.open("log.txt", FILE_WRITE);
+    for (int i = 0; i < 512; i++){
+      logFile.print("A");
+    }
+    logFile.close();
+    
+  }
+
+  deltaTime = millis() - deltaTime;
   
-  #if debug_mode
-    // Debug Monitor
+  #if debug_mode // Debug Monitor
+
     const int monitorDelay = 1000; //ms
     static unsigned long lastMonitor = 0;
-    if (millis() - monitorDelay > lastMonitor){
+    if (millis() >= monitorDelay + lastMonitor){
       Serial.print("dT: ");
       Serial.print(deltaTime);
       Serial.print(", EREG: ");
@@ -232,6 +300,7 @@ void loop() {
     }
 
   #endif
+
 }
 
 
