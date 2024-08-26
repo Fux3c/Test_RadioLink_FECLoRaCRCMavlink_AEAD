@@ -1,0 +1,23 @@
+connectors:
+  FC-1-X5:
+    type: 2.54mm
+    subtype: female
+    pinlabels: [Servo1,5V,GND]
+  MCRS-Servo1:
+    type: 2.54mm
+    subtype: male
+    pinlabels: [Servo, 5V, GND]
+
+
+cables:
+  MCRS-1:
+    gauge: 0.5 mm2
+    length: 0.3
+    colors: [YE, RD, BK]
+    wirecount: 3
+    shield: false
+connections:
+  - 
+    - FC-1-X5: [1,2,3]
+    - MCRS-1: [1,2,3]
+    - MCRS-Servo1: [1,2,3]

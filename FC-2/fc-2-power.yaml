@@ -1,0 +1,28 @@
+connectors:
+  FC-2-X1B:  
+    type: WAGO 2601-1104
+    subtype: female
+    pinlabels: [GND, BGND1, BGND2, BAT]
+  F:
+    style: simple
+    type: Crimp ferrule
+    subtype: 0.5 mm²
+    color: YE
+  Battery-2:
+    type: XT
+    subtype: male
+    pinlabels: [+, -]
+cables:
+  Power-2:
+    gauge: 0.5 mm2
+    length: 0.5
+    colors: [RD, BK]
+    wirecount: 2
+    shield: false
+connections:
+  -
+    - FC-2-X1B: [4,3]
+    - <-
+    - F.
+    - Power-2: [1, 2]
+    - Battery-2: [+, -]

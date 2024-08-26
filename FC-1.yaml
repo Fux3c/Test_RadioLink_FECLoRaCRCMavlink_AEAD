@@ -1,0 +1,84 @@
+title: Flight Computer 1
+pn: FC-1-Conn
+
+authors:
+  Created:
+    name: OESS
+    date: 2024-08-26
+  Approved:
+    name: OESS
+    date: 2024-08-26
+
+template:
+  name: din-6771
+  sheetsize: A3
+connectors:
+  CATS-Vega-X1B:
+    type: WAGO 2601-1104
+    subtype: female
+    pinlabels: [GND, BGND1, BGND2, BAT]
+    image:
+      src: CATS-Wago.png
+      caption: WAGO 2601-1104
+
+  CATS-Vega-X4:
+    type: 2.54mm
+    subtype: female
+    pinlabels: [Servo1,5V,GND]
+  CATS-Vega-X5:
+    type: 2.54mm
+    subtype: female
+    pinlabels: [Servo1,5V,GND]
+  SRAD-HPRS-Servo:
+    type: 2.54mm
+    subtype: male
+    pinlabels: [Servo, 5V, GND]
+  MCRS-Servo:
+    type: 2.54mm
+    subtype: male
+    pinlabels: [Servo, 5V, GND]
+  Battery:
+    type: XT
+    subtype: male
+    pinlabels: [+, -]
+  F:
+    style: simple
+    type: Crimp ferrule
+    subtype: 0.5 mm²
+    color: YE
+
+
+
+cables:
+  W1:
+    gauge: 0.5 mm2
+    length: 0.2
+    colors: [YE, RD, BK]
+    wirecount: 3
+    shield: false
+  W2:
+    gauge: 0.5 mm2
+    length: 0.3
+    colors: [YE, RD, BK]
+    wirecount: 3
+    shield: false
+  W3:
+    gauge: 0.5 mm2
+    length: 0.3
+    colors: [RD, BK]
+    wirecount: 2
+    shield: false
+
+connections:
+  -
+    - CATS-Vega-X4: [1,2,3]
+    - W1: [1,2,3]
+    - SRAD-HPRS-Servo: [1,2,3]
+  -
+    - CATS-Vega-X5: [1,2,3]
+    - W2: [1,2,3]
+    - MCRS-Servo: [1,2,3]
+  -
+    - CATS-Vega-X1B: [BAT, BGND2]
+    - W3: [2,1]
+    - Battery: [1,2]
