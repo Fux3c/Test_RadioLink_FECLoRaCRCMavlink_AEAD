@@ -5,6 +5,7 @@ connectors:
     pinlabels: [GND, BGND1, BGND2, BAT]
     image:
       src: ../CATS-Wago.png
+    ignore_in_bom: true
   F:
     style: simple
     type: Crimp ferrule

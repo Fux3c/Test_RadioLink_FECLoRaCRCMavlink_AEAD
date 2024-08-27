@@ -3,6 +3,8 @@ connectors:
     type: WAGO 2601-1104
     subtype: female
     pinlabels: [GND, BGND1, BGND2, BAT]
+    ignore_in_bom: true
+
   F:
     style: simple
     type: Crimp ferrule
