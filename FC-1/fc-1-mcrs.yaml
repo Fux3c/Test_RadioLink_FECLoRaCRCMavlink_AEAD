@@ -16,6 +16,8 @@ cables:
     colors: [YE, RD, BK]
     wirecount: 3
     shield: false
+    show_equiv: true
+
 connections:
   - 
     - FC-1-X5: [1,2,3]

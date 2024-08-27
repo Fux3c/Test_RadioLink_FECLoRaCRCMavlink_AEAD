@@ -22,6 +22,8 @@ cables:
     colors: [RD, BK]
     wirecount: 2
     shield: false
+    show_equiv: true
+
 connections:
   -
     - FC-1-X1B: [4,3]
