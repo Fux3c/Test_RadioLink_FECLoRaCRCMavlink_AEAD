@@ -12,8 +12,8 @@ connectors:
     subtype: 0.5 mm²
     color: YE
   Battery-1:
-    type: XT
-    subtype: male
+    type: XT60
+    subtype: female
     pinlabels: [+, -]
 cables:
   Power-1:
