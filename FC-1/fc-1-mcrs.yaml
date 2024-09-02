@@ -1,3 +1,5 @@
+metadata:
+  title: FC-1 to MCRS
 connectors:
   FC-1-X5:
     type: 2.54mm
@@ -12,11 +14,14 @@ connectors:
 cables:
   MCRS-1:
     gauge: 0.5 mm2
-    length: 0.3
-    colors: [YE, RD, BK]
+    length: 1.2
+    colors: [GN, BU, BN]
     wirecount: 3
     shield: false
     show_equiv: true
+    supplier: Biltema
+    spn: kabel-rkk-3g-1-mm2-hvit-2000051909
+
 
 connections:
   - 

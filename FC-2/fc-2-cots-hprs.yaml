@@ -11,8 +11,8 @@ connectors:
 
 cables:
   COTS-HPRS:
-    gauge: 0.5 mm2
-    length: 0.3
+    gauge: 1.0 mm2
+    length: 1.7
     colors: [YE, RD, BK]
     wirecount: 3
     shield: false
