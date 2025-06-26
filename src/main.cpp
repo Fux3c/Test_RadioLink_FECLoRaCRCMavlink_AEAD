@@ -15,7 +15,12 @@ enum TX_RX_MODE {
 
 int FEM(TX_RX_MODE tx_invRx, int ref);
 
-[[noreturn]] int main() {
+SX1280* radio = nullptr;
+
+void setup() {
+
+    Serial.begin(9600);
+    delay(200);
 
     analogWriteResolution(10); // => 0-1023
 
@@ -28,21 +33,40 @@ int FEM(TX_RX_MODE tx_invRx, int ref);
 
     FEM(SLEEP, 0);
 
-    SX1280 radio = new Module(CS, DIO1, RST, BUSY);
+    radio = new SX1280(new Module(CS, DIO1, RST, BUSY));
 
     FEM(TX, 500);
-    radio.begin(2400.0);  // 2.4 GHz
-    radio.setOutputPower(6);  // 6 dBm
+    int state = radio->begin(
+        // 2.4 GHz
+        2400.0,
+        812.5,
+        9,
+        7,
+        18,
+        6
+    );
+    // VELDIG VIKTIG! SKAL IKKE HØYERE ENN 6 dBm
 
-    while (true) {
-
-        radio.transmit("Hello World");
-
-        digitalWrite(LED, 1);
-        delay(500);
-        digitalWrite(LED, 0);
-        delay(500);
+    if (state != RADIOLIB_ERR_NONE) {
+        // Handle initialization error - maybe blink LED in a pattern
+        while(true) {
+            digitalWrite(LED, 1);
+            delay(100);
+            digitalWrite(LED, 0);
+            delay(100);
+        }
     }
+}
+
+
+void loop() {
+    radio->transmit("Hello World");
+    Serial.println("Sendte: Hello World");
+
+    digitalWrite(LED, 1);
+    delay(1000);
+    digitalWrite(LED, 0);
+    delay(1000);
 }
 
 
@@ -68,7 +92,7 @@ int FEM(const TX_RX_MODE tx_invRx, int ref) {
             //int bitVal = int(U);
             //Serial.print(ref); Serial.print(" - "); Serial.println(bitVal);
             //ref = ref * 155; // 1023/3.3 *1/2
-            analogWrite(DAC0, 2000); // measuring 2.3v buffered by an op amp (as in schematic) without any gain
+            analogWrite(DAC0, 977); // measuring 2.3v buffered by an op amp (as in schematic) without any gain
             // 2000 % 1023 = 977 ??
             digitalWrite(CSD, 1);
             digitalWrite(CTX, 1);
