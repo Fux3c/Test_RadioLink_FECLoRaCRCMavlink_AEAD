@@ -10,6 +10,9 @@ using namespace pins;
 uint8_t circ_mode = 0; // circuit mode status
 uint8_t cmd_mode = 0; // command mode status
 
+// !!!!!!!!!!!!!!!!!!!! DO NOT GO HIGHER THAN 465
+constexpr int DAC_POWER = 465;
+
 #define SENDER
 
 enum TX_RX_MODE {
@@ -90,7 +93,11 @@ void loop() {
 
     static unsigned long count = 0;
     if (!thermalThrottling) {
-        radio->transmit((std::string("HRZN range test: ") + std::to_string(count)).c_str());
+        const std::string message =
+            std::string("HRZN range test: ")
+            + std::to_string(count) + " | "
+            + std::to_string(DAC_POWER % 466);
+        radio->transmit(message.c_str());
         Serial.println("Sendte: " + String(count));
         count++;
     }
@@ -182,7 +189,7 @@ int FEM(const TX_RX_MODE tx_invRx, int ref) {
             //Serial.print(ref); Serial.print(" - "); Serial.println(bitVal);
             //ref = ref * 155; // 1023/3.3 *1/2
             // !!!!!!!!!!!!!!!!!!!! DO NOT GO HIGHER THAN 465
-            analogWrite(DAC0, 200); // measuring 2.3v buffered by an op amp (as in schematic) without any gain
+            analogWrite(DAC0, DAC_POWER % 466); // measuring 2.3v buffered by an op amp (as in schematic) without any gain
             // 2000 % 1023 = 977 ??
             digitalWrite(CSD, 1);
             digitalWrite(CTX, 1);
