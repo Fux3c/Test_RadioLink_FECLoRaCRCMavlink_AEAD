@@ -46,11 +46,11 @@ void setup() {
 
     radio = new SX1280(new Module(CS, DIO1, RST, BUSY));
 
-    if (IS_SENDER) {
-        FEM(TX, 500);
-    } else {
-        FEM(RX, 500);
-    }
+#ifdef SENDER
+    FEM(TX, 500);
+#else
+    FEM(RX, 500);
+#endif
 
     int state = radio->begin(
         // 2.4 GHz
@@ -88,17 +88,19 @@ void loop() {
 
 #ifdef SENDER
 
-    unsigned long m = millis();
+    static unsigned long count = 0;
     if (!thermalThrottling) {
-        radio->transmit(std::to_string(m).c_str());
-        Serial.println("Sendte: " + String(m));
+        radio->transmit((std::string("HRZN range test: ") + std::to_string(count)).c_str());
+        Serial.println("Sendte: " + String(count));
+        count++;
     }
 
 #else
 
-    String recieved;
-    radio->receive(recieved);
-    Serial.println("Mottok: " + recieved);
+
+    String received;
+    radio->receive(received);
+    Serial.println("Mottok: " + received);
 
     //Get RSSI of received packet
     float rssi = radio->getRSSI();
@@ -111,9 +113,9 @@ void loop() {
     printMetrics(currentTemp, thermalThrottling);
 
     digitalWrite(LED, 1);
-    delay(500);
+    delay(250);
     digitalWrite(LED, 0);
-    delay(500);
+    delay(250);
 }
 
 void getTemperature(float &currentTemp) {
@@ -141,7 +143,7 @@ void printMetrics(const float currentTemp, const bool thermalThrottling) {
     Serial.print("Current:");
     const double current = current_raw * 0.00040283203;
     Serial.print(current);
-    Serial.println(" A");
+    Serial.print(" A | ");
 
     Serial.print("Voltage:");
     const float voltage = current * 2;
@@ -180,7 +182,7 @@ int FEM(const TX_RX_MODE tx_invRx, int ref) {
             //Serial.print(ref); Serial.print(" - "); Serial.println(bitVal);
             //ref = ref * 155; // 1023/3.3 *1/2
             // !!!!!!!!!!!!!!!!!!!! DO NOT GO HIGHER THAN 465
-            analogWrite(DAC0, 465); // measuring 2.3v buffered by an op amp (as in schematic) without any gain
+            analogWrite(DAC0, 200); // measuring 2.3v buffered by an op amp (as in schematic) without any gain
             // 2000 % 1023 = 977 ??
             digitalWrite(CSD, 1);
             digitalWrite(CTX, 1);
