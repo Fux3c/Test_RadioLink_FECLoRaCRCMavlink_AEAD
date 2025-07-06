@@ -10,7 +10,7 @@ using namespace pins;
 uint8_t circ_mode = 0; // circuit mode status
 uint8_t cmd_mode = 0; // command mode status
 
-constexpr bool IS_SENDER = true;
+#define SENDER
 
 enum TX_RX_MODE {
     RX,
@@ -19,10 +19,12 @@ enum TX_RX_MODE {
 };
 
 int FEM(TX_RX_MODE tx_invRx, int ref);
+void getTemperature(float &currentTemp);
+void checkThermalStatus(float currentTemp, bool &thermallyThrottling);
+void printMetrics(float currentTemp, bool thermalThrottling);
 
 SX1280* radio = nullptr;
-//TwoWire wire = Wire;
-//TMP1075::TMP1075 temp = TMP1075::TMP1075(wire);
+TMP1075::TMP1075 temp = TMP1075::TMP1075(Wire);
 
 void setup() {
     Serial.begin(9600);
@@ -72,60 +74,88 @@ void setup() {
         }
     }
     // Temperature initialization
-    //Serial.println("Setting up temp");
-    //wire.begin();
-    //temp.begin();
+    Serial.println("Setting up temp");
+    Wire.begin();
+    temp.begin();
+}
+
+void loop() {
+    static float currentTemp = 0;
+    static bool thermalThrottling = false;
+
+    getTemperature(currentTemp);
+    checkThermalStatus(currentTemp, thermalThrottling);
+
+#ifdef SENDER
+
+    unsigned long m = millis();
+    if (!thermalThrottling) {
+        radio->transmit(std::to_string(m).c_str());
+        Serial.println("Sendte: " + String(m));
+    }
+
+#else
+
+    String recieved;
+    radio->receive(recieved);
+    Serial.println("Mottok: " + recieved);
+
+    //Get RSSI of received packet
+    float rssi = radio->getRSSI();
+    Serial.print("Packet RSSI: ");
+    Serial.print(rssi);
+    Serial.println(" dBm");
+
+#endif
+
+    printMetrics(currentTemp, thermalThrottling);
+
+    digitalWrite(LED, 1);
+    delay(500);
+    digitalWrite(LED, 0);
+    delay(500);
+}
+
+void getTemperature(float &currentTemp) {
+    // Get temperature
+    static unsigned long lastTime = millis();
+    if (millis() - lastTime > 1000) {
+        lastTime = millis();
+        temp.setConversionTime(TMP1075::ConversionTime220ms);
+        currentTemp = temp.getTemperatureCelsius();
+    }
+}
+
+void checkThermalStatus(float currentTemp, bool &thermallyThrottling) {
+    if (currentTemp > 60.0) {
+        thermallyThrottling = true;
+    } else if (currentTemp < 50.0) {
+        thermallyThrottling = false;
+    }
 }
 
 
-void loop() {
-    while (Serial.available()) {
-        Serial.read();
-    }
-    if (IS_SENDER) {
-        unsigned long m = millis();
-        radio->transmit(std::to_string(m).c_str());
-        Serial.println("Sendte: " + String(m));
-    } else {
-        String recieved;
-        radio->receive(recieved);
-        Serial.println("Mottok: " + recieved);
-
-        //Get RSSI of received packet
-        float rssi = radio->getRSSI();
-        Serial.print("Packet RSSI: ");
-        Serial.print(rssi);
-        Serial.println(" dBm");
-
-        // Get temperature
-        // static unsigned long lastTime = millis();
-        // if (millis() - lastTime > 1000) {
-        //     lastTime = millis();
-        //     temp.setConversionTime(TMP1075::ConversionTime220ms);
-        //     Serial.print("Temperature: ");
-        //     Serial.print(temp.getTemperatureCelsius());
-        //     Serial.println(" C");
-        // }
-    }
-
-    int current_raw = analogRead(A3);
-    Serial.println(current_raw);
+void printMetrics(const float currentTemp, const bool thermalThrottling) {
+    const int current_raw = analogRead(A3);
+    //Serial.println(current_raw);
     Serial.print("Current:");
-    float current = current_raw * 0.00040283203;
+    const double current = current_raw * 0.00040283203;
     Serial.print(current);
     Serial.println(" A");
 
     Serial.print("Voltage:");
-    float votage = current * 2;
-    Serial.print(votage);
+    const float voltage = current * 2;
+    Serial.print(voltage);
     Serial.println(" V");
 
-    //digitalWrite(LED, 1);
-    //delay(100);
-    //digitalWrite(LED, 0);
-    //delay(100);
-}
+    Serial.print("Temperature: ");
+    Serial.print(currentTemp);
+    Serial.println(" C");
 
+    Serial.print("Is thermally throttling: ");
+    Serial.println(thermalThrottling ? "YES" : "NO");
+
+}
 
 /**
  * Front End Module
