@@ -4,6 +4,7 @@
 #include <string>
 #include <TMP1075.h>
 #include <Wire.h>
+#include "../lib/thermal_control.cpp"
 
 using namespace pins;
 
@@ -23,14 +24,13 @@ enum TX_RX_MODE {
 
 int FEM(TX_RX_MODE tx_invRx, int ref);
 void getTemperature(float &currentTemp);
-void checkThermalStatus(float currentTemp, bool &thermallyThrottling);
 void printMetrics(float currentTemp, bool thermalThrottling);
 
 SX1280* radio = nullptr;
 TMP1075::TMP1075 temp = TMP1075::TMP1075(Wire);
 
-void setup() {
-    Serial.begin(9600);
+[[noreturn]] void setup() {
+    Serial.begin(115200);
     delay(200);
 
     analogWriteResolution(10); // => 0-1023
@@ -120,9 +120,9 @@ void loop() {
     printMetrics(currentTemp, thermalThrottling);
 
     digitalWrite(LED, 1);
-    delay(250);
+    //delay(250);
     digitalWrite(LED, 0);
-    delay(250);
+    //delay(250);
 }
 
 void getTemperature(float &currentTemp) {
@@ -135,16 +135,10 @@ void getTemperature(float &currentTemp) {
     }
 }
 
-void checkThermalStatus(float currentTemp, bool &thermallyThrottling) {
-    if (currentTemp > 60.0) {
-        thermallyThrottling = true;
-    } else if (currentTemp < 50.0) {
-        thermallyThrottling = false;
-    }
-}
-
 
 void printMetrics(const float currentTemp, const bool thermalThrottling) {
+    Serial.println(millis());
+
     const int current_raw = analogRead(A3);
     //Serial.println(current_raw);
     Serial.print("Current:");
