@@ -113,7 +113,8 @@ void loop() {
 
 #endif
 
-    sensorsPrintMetrics(currentTemp, thermalThrottling);
+    //sensorsPrintMetrics(currentTemp, thermalThrottling); not accepted by nidhoggr for now,
+    // maybe integrate it as a mavlink device in the future
 
     digitalWrite(LED, 1);
     digitalWrite(LED, 0);
