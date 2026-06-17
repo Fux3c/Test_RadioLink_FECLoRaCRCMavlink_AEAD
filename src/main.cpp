@@ -14,7 +14,7 @@ uint8_t circ_mode = 0;
 // command mode status
 uint8_t cmd_mode = 0;
 
-#define SENDER
+//#define SENDER
 
 static SX1280* radio = nullptr;
 
@@ -94,11 +94,15 @@ void loop() {
 
 #else
 
-    String received;
+    uint8_t received[128];
 
-    if (radio->receive(received) == RADIOLIB_ERR_NONE) {
+    if (radio->receive(received, 128) == RADIOLIB_ERR_NONE) {
 
-        Serial.println("Mottok: " + received);
+        Serial.print("Mottok: ");
+        for (int i = 0; i < 128; i++) {
+            Serial.print(received[i]);
+        }
+        Serial.println();
 
         float rssi = radio->getRSSI();
 
