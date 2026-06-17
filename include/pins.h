@@ -5,13 +5,12 @@
 #ifndef PINS_H
 #define PINS_H
 
-#pragma once
-
 #include <Arduino.h>
 
 // Definitons for GPIO-pins and other peripherals to be used in code
 
 namespace pins {
+
     // !!! Only example values and pins !!!
     constexpr int LED = A1;
     constexpr int RST = 10;
@@ -25,7 +24,7 @@ namespace pins {
 
     constexpr int miso = 12;
     constexpr int mosi = 11;
-    constexpr int sck = 13;
+    constexpr int sck  = 13;
 }
 
-#endif //PINS_H
+#endif
