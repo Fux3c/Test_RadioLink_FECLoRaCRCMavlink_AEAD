@@ -14,17 +14,26 @@ ColumnLayout {
     id: heartbeatRoot
     required property QtObject model
 
-    Text {
-        id: lastBeatText
-        color: "#ffffff"
-    }
-
     Rectangle {
         id: root
 
-        width: 32
-        height: 32
-        radius: width / 2
+        color: "#aaaaaa"
+
+        width: 56
+        height: 26
+        radius: height / 4
+
+        Layout.topMargin: 10
+
+        Text {
+            id: connectionStabilityText
+            text: ""
+            color: "#ffffff"
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+            width: parent.width
+            height: parent.height
+        }
 
         // Ticks continuously (not just when a new beat arrives) so the
         // indicator can keep aging between beats. 33ms matches the ~30fps
@@ -37,13 +46,25 @@ ColumnLayout {
         onTriggered: {
             if (heartbeatRoot.model.lastBeatMs === -1) return;
             let elapsed = (Date.now() - heartbeatRoot.model.lastBeatMs) / 1000;
-            if (elapsed>10) lastBeatText.text = elapsed + "s ago" else lastBeatText.text = "";
-            let badFactor = Math.min(255, Math.floor((elapsed / 10) * 256));
+
+            // print time since last beat if more than 6s ago
+            if (elapsed>10) lastBeatText.text = elapsed + "s ago";
+                else lastBeatText.text = "";
+
+            if (elapsed>20) connectionStabilityText.text = "Dropped";
+                else if (elapsed>10) connectionStabilityText.text = "Degraded";
+                else connectionStabilityText.text = "Good";
+
+            let badFactor = Math.min(255, Math.floor((elapsed / 10) * 256)); // "bad factor" canon term: 0-255
             let hexR = badFactor.toString(16).padStart(2, '0');
             let hexG = (255-badFactor).toString(16).padStart(2, '0');
             root.color = "#" + hexR + hexG + "00";
         }
         }
+    }
+    Text {
+        id: lastBeatText
+        color: "#aaaaaa"
     }
 
 }
