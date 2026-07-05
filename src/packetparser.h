@@ -23,6 +23,7 @@ signals:
     void pressureReceived(double value, uint8_t compid);
     void radiationReceived(double value);
     void temperatureReceived(double value);
+    void heartbeatReceived(uint8_t compid);
 
 private:
     mavlink_message_t m_msg;

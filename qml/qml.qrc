@@ -10,5 +10,6 @@
         <file>components/AvionicsMain.qml</file>
         <file>components/PayloadMain.qml</file>
         <file>components/CursorMap.qml</file>
+        <file>components/HeartbeatIndicator.qml</file>
     </qresource>
 </RCC>

@@ -126,10 +126,23 @@ ApplicationWindow {
                     }
 
                     TabButton {
+                        id: avionicsTab
                         text: "Avionics"
                         rotation: 0
                         implicitHeight: tabBar.height / 2
                         width: tabBar.width
+
+                        contentItem: ColumnLayout {
+               spacing: 6
+               HeartbeatIndicator {
+               model: avionicsHeartbeatM
+               }
+               Text {
+               text: avionicsTab.text
+               color: avionicsTab.checked ? "white" : "#aaaaaa"
+               Layout.fillWidth: true
+               }
+               }
                     }
                     TabButton {
                         text: "Payload"

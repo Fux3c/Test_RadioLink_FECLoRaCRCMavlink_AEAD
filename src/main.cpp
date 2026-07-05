@@ -3,6 +3,7 @@
 #include <QQmlContext>
 #include <models/timewindowproxymodel.h>
 #include <models/flightstatemodel.h>
+#include <models/heartbeatmodel.h>
 #include <utils/flightlogfactory.h>
 #include <QDateTime>
 #include <cmath>
@@ -53,7 +54,10 @@ int main(int argc, char *argv[])
         nullptr  // state: flight-phase state machine lives on avionics
     };
 
-    MissionManager* missionManager = new MissionManager(avionicsModels);
+    MissionManager* missionManager = new MissionManager(avionicsModels, payloadModels);
+
+    HeartbeatModel* avionicsHeartbeat = new HeartbeatModel(&app);
+    HeartbeatModel* payloadHeartbeat = new HeartbeatModel(&app);
 
     //Serial reader & Parse packer
     SerialReader* serialReader = new SerialReader(&app);
@@ -103,6 +107,11 @@ int main(int argc, char *argv[])
                      [payloadModels, elapsedTimer](double value) {
                          payloadModels.radiation->appendData(elapsedTimer->elapsed(), value);
                      });
+    QObject::connect(parser, &PacketParser::heartbeatReceived,
+                     [avionicsHeartbeat, payloadHeartbeat](uint8_t compid) {
+                         HeartbeatModel* model = compid == HorizonComponent::Payload ? payloadHeartbeat : avionicsHeartbeat;
+                         model->recordBeat();
+                     });
 
     QObject::connect(serialReader, &SerialReader::errorOccurred,
                      [](const QString &error) {
@@ -130,6 +139,7 @@ int main(int argc, char *argv[])
     qmlRegisterType<TimeWindowProxyModel>("com.horizon.components", 1, 0, "TimeWindowProxyModel");
     qmlRegisterType<HumidityCollection>("HumidityCollection", 1, 0, "HumidityCollection");
     qmlRegisterType<FlightStateModel>("com.horizon.components", 1, 0, "FlightStateModel");
+    qmlRegisterType<HeartbeatModel>("com.horizon.components", 1, 0, "HeartbeatModel");
 
 
     engine.rootContext()->setContextProperty("missionManager", missionManager );
@@ -151,6 +161,9 @@ int main(int argc, char *argv[])
 
     engine.rootContext()->setContextProperty("locationM", locationModel);
     engine.rootContext()->setContextProperty( "stateM", stateModel );
+
+    engine.rootContext()->setContextProperty( "avionicsHeartbeatM", avionicsHeartbeat);
+    engine.rootContext()->setContextProperty( "payloadHeartbeatM", payloadHeartbeat);
 
     // Connect to state transitions to log them
     QObject::connect(stateModel, &FlightStateModel::stateTransition,

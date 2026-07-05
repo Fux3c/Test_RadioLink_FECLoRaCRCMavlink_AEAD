@@ -25,10 +25,22 @@ Options:
 | `--port /dev/ttyX` | write to an existing device instead of creating a PTY |
 | `--hz 50` | base update rate (default 50 Hz) |
 | `--no-flight` | steady idle values instead of a simulated flight arc |
+| `--heartbeat-period 5` | seconds between heartbeats, per board (default 5) |
+| `--fallout` | periodically kill the whole link (including heartbeats) to simulate signal dropout |
+| `--fallout-on 20` | seconds the signal stays up per fallout cycle (default 20) |
+| `--fallout-off 6` | seconds the signal stays down per fallout cycle (default 6) |
 
 By default it plays a full rocket arc: idle → thrust → coast → apogee → drogue →
 main → touchdown, driving altitude, pressure, temperature, acceleration,
 velocity, radiation and flight-state.
+
+With `--fallout`, the link square-waves between fully up and fully silent
+(no messages at all, heartbeats included) — useful for exercising the ground
+station's "signal lost" / heartbeat-staleness behaviour:
+
+```bash
+./mavlink_emulator.py --fallout --fallout-on 15 --fallout-off 5
+```
 
 ## Messages streamed
 
@@ -40,7 +52,7 @@ velocity, radiation and flight-state.
 | `VFR_HUD` | 74 | velocity |
 | `NAMED_VALUE_INT` "BARO_T" | 252 | temperature |
 | `COSMIC_RADIATION` | 16002 | radiation (custom dialect) |
-| `HEARTBEAT` | 0 | — |
+| `HEARTBEAT` | 0 | heartbeat indicator (per board, every `--heartbeat-period` s) |
 | `FLIGHT_STATES` | 16000 | flight phase (custom dialect) |
 | `PAYLOAD_TEMPERATURE` | 16001 | stack temps (custom dialect) |
 

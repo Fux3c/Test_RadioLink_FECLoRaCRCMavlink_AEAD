@@ -87,7 +87,8 @@ void PacketParser::handleMessage(const mavlink_message_t &msg)
         break;
     }
     case MAVLINK_MSG_ID_HEARTBEAT: {
-        // TODO
+        emit heartbeatReceived(msg.compid);
+        break;
     }
     default:
         break;

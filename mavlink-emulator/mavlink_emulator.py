@@ -11,7 +11,7 @@ exactly what the ground station parses:
     VFR_HUD          (74)    -> velocity
     NAMED_VALUE_INT  (252)   -> "BARO_T" temperature
     COSMIC_RADIATION (16002) -> radiation (Horizon custom dialect)
-    HEARTBEAT        (0)
+    HEARTBEAT        (0)     -> heartbeat indicator (every --heartbeat-period s)
     FLIGHT_STATES    (16000) -> flight phase (Horizon custom dialect)
     PAYLOAD_TEMPERATURE(16001)-> stack temps (Horizon custom dialect)
 
@@ -34,6 +34,9 @@ Usage:
     ./mavlink_emulator.py --port /dev/ttyX # write to an existing device instead
     ./mavlink_emulator.py --hz 50          # set base update rate (default 50)
     ./mavlink_emulator.py --no-flight      # steady idle values instead of a flight arc
+    ./mavlink_emulator.py --fallout        # periodically kill the whole link (signal
+                                            # dropout, including heartbeats) to test
+                                            # loss-of-signal behaviour on the GS side
 
 Point the ground station at the printed /dev/pts/N device (see README.md).
 """
@@ -245,6 +248,14 @@ def main():
     ap.add_argument("--port", help="write to an existing device instead of creating a PTY")
     ap.add_argument("--hz", type=float, default=50.0, help="base update rate (default 50)")
     ap.add_argument("--no-flight", action="store_true", help="stream steady idle values")
+    ap.add_argument("--heartbeat-period", type=float, default=5.0,
+                     help="seconds between heartbeats, per board (default 5)")
+    ap.add_argument("--fallout", action="store_true",
+                     help="periodically kill the whole link (including heartbeats) to simulate signal dropout")
+    ap.add_argument("--fallout-on", type=float, default=20.0,
+                     help="seconds the signal stays up per fallout cycle (default 20)")
+    ap.add_argument("--fallout-off", type=float, default=6.0,
+                     help="seconds the signal stays down per fallout cycle (default 6)")
     args = ap.parse_args()
 
     fd, name = open_output(args.port)
@@ -253,9 +264,15 @@ def main():
     print(f"[emulator] streaming MAVLink v2 on: {name}")
     if not args.port:
         print(f"[emulator] point the ground station at this device: {name}")
-    print(f"[emulator] rate={args.hz} Hz  (Ctrl-C to stop)")
+    print(f"[emulator] rate={args.hz} Hz, heartbeat every {args.heartbeat_period}s  (Ctrl-C to stop)")
+    if args.fallout:
+        print(f"[emulator] fallout enabled: {args.fallout_on}s up / {args.fallout_off}s down "
+              "(all messages, including heartbeats, are dropped while down)")
 
     period = 1.0 / args.hz
+    heartbeat_ticks = max(1, round(args.heartbeat_period * args.hz))
+    fallout_cycle = args.fallout_on + args.fallout_off
+    signal_up = True
     t0 = time.time()
     tick = 0
 
@@ -307,12 +324,22 @@ def main():
                 out += framer.frame(*msg_cosmic_radiation(t_us, rad), COMPID_PAYLOAD)
                 out += framer.frame(*msg_flight_states(t_us, phase), COMPID_AVIONICS)
 
-            # 1 Hz: heartbeat from both components
-            if tick % int(args.hz) == 0:
+            # heartbeat from both components, every --heartbeat-period seconds
+            if tick % heartbeat_ticks == 0:
                 out += framer.frame(*msg_heartbeat(), COMPID_AVIONICS)
                 out += framer.frame(*msg_heartbeat(), COMPID_PAYLOAD)
 
-            os.write(fd, bytes(out))
+            # Fallout: square-wave the link up/down to simulate signal loss.
+            # While down, nothing is written at all (heartbeats included), so
+            # the GS side has to notice the silence on its own.
+            if args.fallout:
+                was_up = signal_up
+                signal_up = (elapsed % fallout_cycle) < args.fallout_on
+                if signal_up != was_up:
+                    print(f"[emulator] signal {'RESTORED' if signal_up else 'LOST'} at t={elapsed:.1f}s")
+
+            if signal_up:
+                os.write(fd, bytes(out))
 
             tick += 1
             # keep cadence

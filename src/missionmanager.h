@@ -37,7 +37,7 @@ class MissionManager : public QObject
     Q_PROPERTY(QString modeText READ modeText NOTIFY stateChanged)
     Q_PROPERTY(bool isPlayback READ isPlayback NOTIFY stateChanged)
 public:
-    explicit MissionManager(FlightModels &models, QObject *parent = nullptr);
+    explicit MissionManager(FlightModels &avionics_models, FlightModels &payload_models, QObject *parent = nullptr);
 
     QString missionName() const;
     void setMissionName(const QString &name);
@@ -51,7 +51,8 @@ signals:
     void stateChanged();
 
 private:
-    FlightModels m_models;
+    FlightModels m_avionics_models;
+    FlightModels m_payload_models;
     QString m_missionName;
     std::variant<CaptureState, PlaybackState> m_state;
 };
