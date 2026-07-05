@@ -7,6 +7,7 @@ exactly what the ground station parses:
 
     SCALED_IMU       (26)    -> acceleration graph
     SCALED_IMU2      (116)   -> rotation graph
+    SCALED_IMU3      (129)   -> magnetometer graph (payload only)
     SCALED_PRESSURE  (29)    -> pressure / temperature / altitude
     VFR_HUD          (74)    -> velocity
     NAMED_VALUE_INT  (252)   -> "BARO_T" temperature
@@ -20,10 +21,10 @@ Every message is tagged with a MAVLink component ID identifying which board
 avionics uses component ID 1 (MAV_COMP_ID_AUTOPILOT1) and the payload uses
 191 (see Payload firmware's include/New/Config.hpp and the ground station's
 src/horizoncomponents.h). Avionics streams its own IMU/baro plus GPS-derived
-speed and flight phase; the payload streams its own IMU/baro plus cosmic
-radiation, stack temperatures, and BARO_T. This lets the ground station's
-per-board model split be tested against two independently-tagged sources
-instead of one.
+speed and flight phase; the payload streams its own IMU/baro plus a
+magnetometer, cosmic radiation, stack temperatures, and BARO_T. This lets
+the ground station's per-board model split be tested against two
+independently-tagged sources instead of one.
 
 No external dependencies (no pymavlink) - the v2 framing and X25 CRC are
 implemented inline, and the per-message CRC_EXTRA values are taken straight
@@ -64,6 +65,7 @@ CRC_EXTRA = {
     29: 115,     # SCALED_PRESSURE
     74: 20,      # VFR_HUD
     116: 76,     # SCALED_IMU2
+    129: 46,     # SCALED_IMU3
     252: 44,     # NAMED_VALUE_INT
     16000: 171,  # FLIGHT_STATES
     16001: 46,   # PAYLOAD_TEMPERATURE
@@ -134,6 +136,16 @@ def msg_scaled_imu2(t_ms, gx, gy, gz):
         0, 0, 0,
         int(gx), int(gy), int(gz),
         0, 0, 0,
+    )
+
+
+def msg_scaled_imu3(t_ms, mx, my, mz):
+    # time_boot_ms u32, then xacc..zmag int16 (acc/gyro/mag); GS reads mag (mgauss)
+    return 129, struct.pack(
+        "<Ihhhhhhhhh", t_ms,
+        0, 0, 0,                    # acc
+        0, 0, 0,                    # gyro
+        int(mx), int(my), int(mz),  # mag (mgauss)
     )
 
 
@@ -310,6 +322,8 @@ def main():
                 t_ms, 40 * payload_wobble, 40 * math.cos(elapsed * 5.0 + 0.7), accel_g * 1000), COMPID_PAYLOAD)
             out += framer.frame(*msg_scaled_imu2(
                 t_ms, 150 * payload_wobble, 120 * math.cos(elapsed * 3.0 + 0.7), 60 * payload_wobble), COMPID_PAYLOAD)
+            out += framer.frame(*msg_scaled_imu3(
+                t_ms, 250 * math.cos(elapsed * 0.5), 250 * math.sin(elapsed * 0.5), 400 + 20 * payload_wobble), COMPID_PAYLOAD)
             out += framer.frame(*msg_scaled_pressure(t_ms, press * 1.001, temp), COMPID_PAYLOAD)
 
             # 5 Hz: payload temperature as NAMED_VALUE_INT "BARO_T" + stack temps

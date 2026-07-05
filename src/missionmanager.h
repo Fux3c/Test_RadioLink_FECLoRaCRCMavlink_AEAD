@@ -10,7 +10,9 @@
 struct FlightModels {
     TimeSeriesModel* acceleration;
     TimeSeriesModel* rotation;
+    TimeSeriesModel* magnetometer;
     TimeSeriesModel* pressure;
+    TimeSeriesModel* temperature;
     TimeSeriesModel* altitude;
     TimeSeriesModel* velocity;
     TimeSeriesModel* radiation;

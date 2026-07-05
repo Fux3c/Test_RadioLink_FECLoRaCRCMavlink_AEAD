@@ -48,14 +48,16 @@ void PacketParser::handleMessage(const mavlink_message_t &msg)
         break;
     }
     case MAVLINK_MSG_ID_SCALED_IMU3: {
-        // TODO: mag
+        mavlink_scaled_imu3_t imu;
+        mavlink_msg_scaled_imu3_decode(&msg, &imu);
+        emit magnetometerReceived(imu.xmag / 10.0, imu.ymag / 10.0, imu.zmag / 10.0, msg.compid);
         break;
     }
     case MAVLINK_MSG_ID_SCALED_PRESSURE: {
         mavlink_scaled_pressure_t pres;
         mavlink_msg_scaled_pressure_decode(&msg, &pres);
         emit pressureReceived(pres.press_abs, msg.compid);
-        emit temperatureReceived(pres.temperature / 100.0);
+        emit temperatureReceived(pres.temperature / 100.0, msg.compid);
         double alt = 44330.0 * (1.0 - pow(pres.press_abs / 1013.25, 0.1903));
         emit altitudeReceived(alt, msg.compid);
         break;
@@ -78,7 +80,7 @@ void PacketParser::handleMessage(const mavlink_message_t &msg)
         QLatin1StringView name(temp.name, strnlen(temp.name, sizeof(temp.name)));
 
         if (name == "BARO_T") {
-            emit temperatureReceived(temp.value);
+            emit temperatureReceived(temp.value, msg.compid);
         } else if (name == "LORA_T") {
             // transceiver temperature
         } else if (name == "LORA_V") {
