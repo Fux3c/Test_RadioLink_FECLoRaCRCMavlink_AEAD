@@ -2,7 +2,6 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Qt.labs.platform as Platform
-import FmControllers
 import HumidityCollection
 import com.horizon.components
 import "components"
