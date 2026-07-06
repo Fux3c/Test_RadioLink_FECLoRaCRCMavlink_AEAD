@@ -7,11 +7,12 @@ exactly what the ground station parses:
 
     SCALED_IMU       (26)    -> acceleration graph
     SCALED_IMU2      (116)   -> rotation graph
+    SCALED_IMU3      (129)   -> magnetometer graph (payload only)
     SCALED_PRESSURE  (29)    -> pressure / temperature / altitude
     VFR_HUD          (74)    -> velocity
     NAMED_VALUE_INT  (252)   -> "BARO_T" temperature
     COSMIC_RADIATION (16002) -> radiation (Horizon custom dialect)
-    HEARTBEAT        (0)
+    HEARTBEAT        (0)     -> heartbeat indicator (every --heartbeat-period s)
     FLIGHT_STATES    (16000) -> flight phase (Horizon custom dialect)
     PAYLOAD_TEMPERATURE(16001)-> stack temps (Horizon custom dialect)
 
@@ -20,10 +21,10 @@ Every message is tagged with a MAVLink component ID identifying which board
 avionics uses component ID 1 (MAV_COMP_ID_AUTOPILOT1) and the payload uses
 191 (see Payload firmware's include/New/Config.hpp and the ground station's
 src/horizoncomponents.h). Avionics streams its own IMU/baro plus GPS-derived
-speed and flight phase; the payload streams its own IMU/baro plus cosmic
-radiation, stack temperatures, and BARO_T. This lets the ground station's
-per-board model split be tested against two independently-tagged sources
-instead of one.
+speed and flight phase; the payload streams its own IMU/baro plus a
+magnetometer, cosmic radiation, stack temperatures, and BARO_T. This lets
+the ground station's per-board model split be tested against two
+independently-tagged sources instead of one.
 
 No external dependencies (no pymavlink) - the v2 framing and X25 CRC are
 implemented inline, and the per-message CRC_EXTRA values are taken straight
@@ -34,6 +35,9 @@ Usage:
     ./mavlink_emulator.py --port /dev/ttyX # write to an existing device instead
     ./mavlink_emulator.py --hz 50          # set base update rate (default 50)
     ./mavlink_emulator.py --no-flight      # steady idle values instead of a flight arc
+    ./mavlink_emulator.py --fallout        # periodically kill the whole link (signal
+                                            # dropout, including heartbeats) to test
+                                            # loss-of-signal behaviour on the GS side
 
 Point the ground station at the printed /dev/pts/N device (see README.md).
 """
@@ -61,6 +65,7 @@ CRC_EXTRA = {
     29: 115,     # SCALED_PRESSURE
     74: 20,      # VFR_HUD
     116: 76,     # SCALED_IMU2
+    129: 46,     # SCALED_IMU3
     252: 44,     # NAMED_VALUE_INT
     16000: 171,  # FLIGHT_STATES
     16001: 46,   # PAYLOAD_TEMPERATURE
@@ -131,6 +136,16 @@ def msg_scaled_imu2(t_ms, gx, gy, gz):
         0, 0, 0,
         int(gx), int(gy), int(gz),
         0, 0, 0,
+    )
+
+
+def msg_scaled_imu3(t_ms, mx, my, mz):
+    # time_boot_ms u32, then xacc..zmag int16 (acc/gyro/mag); GS reads mag (mgauss)
+    return 129, struct.pack(
+        "<Ihhhhhhhhh", t_ms,
+        0, 0, 0,                    # acc
+        0, 0, 0,                    # gyro
+        int(mx), int(my), int(mz),  # mag (mgauss)
     )
 
 
@@ -245,6 +260,14 @@ def main():
     ap.add_argument("--port", help="write to an existing device instead of creating a PTY")
     ap.add_argument("--hz", type=float, default=50.0, help="base update rate (default 50)")
     ap.add_argument("--no-flight", action="store_true", help="stream steady idle values")
+    ap.add_argument("--heartbeat-period", type=float, default=5.0,
+                     help="seconds between heartbeats, per board (default 5)")
+    ap.add_argument("--fallout", action="store_true",
+                     help="periodically kill the whole link (including heartbeats) to simulate signal dropout")
+    ap.add_argument("--fallout-on", type=float, default=20.0,
+                     help="seconds the signal stays up per fallout cycle (default 20)")
+    ap.add_argument("--fallout-off", type=float, default=6.0,
+                     help="seconds the signal stays down per fallout cycle (default 6)")
     args = ap.parse_args()
 
     fd, name = open_output(args.port)
@@ -253,9 +276,15 @@ def main():
     print(f"[emulator] streaming MAVLink v2 on: {name}")
     if not args.port:
         print(f"[emulator] point the ground station at this device: {name}")
-    print(f"[emulator] rate={args.hz} Hz  (Ctrl-C to stop)")
+    print(f"[emulator] rate={args.hz} Hz, heartbeat every {args.heartbeat_period}s  (Ctrl-C to stop)")
+    if args.fallout:
+        print(f"[emulator] fallout enabled: {args.fallout_on}s up / {args.fallout_off}s down "
+              "(all messages, including heartbeats, are dropped while down)")
 
     period = 1.0 / args.hz
+    heartbeat_ticks = max(1, round(args.heartbeat_period * args.hz))
+    fallout_cycle = args.fallout_on + args.fallout_off
+    signal_up = True
     t0 = time.time()
     tick = 0
 
@@ -293,6 +322,8 @@ def main():
                 t_ms, 40 * payload_wobble, 40 * math.cos(elapsed * 5.0 + 0.7), accel_g * 1000), COMPID_PAYLOAD)
             out += framer.frame(*msg_scaled_imu2(
                 t_ms, 150 * payload_wobble, 120 * math.cos(elapsed * 3.0 + 0.7), 60 * payload_wobble), COMPID_PAYLOAD)
+            out += framer.frame(*msg_scaled_imu3(
+                t_ms, 250 * math.cos(elapsed * 0.5), 250 * math.sin(elapsed * 0.5), 400 + 20 * payload_wobble), COMPID_PAYLOAD)
             out += framer.frame(*msg_scaled_pressure(t_ms, press * 1.001, temp), COMPID_PAYLOAD)
 
             # 5 Hz: payload temperature as NAMED_VALUE_INT "BARO_T" + stack temps
@@ -307,12 +338,22 @@ def main():
                 out += framer.frame(*msg_cosmic_radiation(t_us, rad), COMPID_PAYLOAD)
                 out += framer.frame(*msg_flight_states(t_us, phase), COMPID_AVIONICS)
 
-            # 1 Hz: heartbeat from both components
-            if tick % int(args.hz) == 0:
+            # heartbeat from both components, every --heartbeat-period seconds
+            if tick % heartbeat_ticks == 0:
                 out += framer.frame(*msg_heartbeat(), COMPID_AVIONICS)
                 out += framer.frame(*msg_heartbeat(), COMPID_PAYLOAD)
 
-            os.write(fd, bytes(out))
+            # Fallout: square-wave the link up/down to simulate signal loss.
+            # While down, nothing is written at all (heartbeats included), so
+            # the GS side has to notice the silence on its own.
+            if args.fallout:
+                was_up = signal_up
+                signal_up = (elapsed % fallout_cycle) < args.fallout_on
+                if signal_up != was_up:
+                    print(f"[emulator] signal {'RESTORED' if signal_up else 'LOST'} at t={elapsed:.1f}s")
+
+            if signal_up:
+                os.write(fd, bytes(out))
 
             tick += 1
             # keep cadence

@@ -25,7 +25,8 @@ SOURCES += \
         src/utils/humidityutils.cpp \
         src/models/humiditymodel.cpp \
         src/utils/timeseriesfactory.cpp \
-        src/models/locationmodel.cpp
+        src/models/locationmodel.cpp \
+        src/models/heartbeatmodel.cpp
 
 HEADERS +=  \
     src/humiditycollection.h \
@@ -42,7 +43,8 @@ HEADERS +=  \
     src/utils/humidityutils.h \
     src/models/humiditymodel.h \
     src/utils/timeseriesfactory.h \
-    src/models/locationmodel.h
+    src/models/locationmodel.h \
+    src/models/heartbeatmodel.h
 
 		
 RESOURCES += qml/qml.qrc \

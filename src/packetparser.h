@@ -20,9 +20,11 @@ signals:
     void velocityReceived(double value, uint8_t compid);
     void accelerationReceived(double x, double y, double z, uint8_t compid);
     void rotationReceived(double x, double y, double z, uint8_t compid);
+    void magnetometerReceived(double x, double y, double z, uint8_t compid);
     void pressureReceived(double value, uint8_t compid);
     void radiationReceived(double value);
-    void temperatureReceived(double value);
+    void temperatureReceived(double value, uint8_t compid);
+    void heartbeatReceived(uint8_t compid);
 
 private:
     mavlink_message_t m_msg;

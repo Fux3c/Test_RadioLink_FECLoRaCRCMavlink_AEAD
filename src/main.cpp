@@ -3,6 +3,7 @@
 #include <QQmlContext>
 #include <models/timewindowproxymodel.h>
 #include <models/flightstatemodel.h>
+#include <models/heartbeatmodel.h>
 #include <utils/flightlogfactory.h>
 #include <QDateTime>
 #include <cmath>
@@ -34,7 +35,9 @@ int main(int argc, char *argv[])
     FlightModels avionicsModels = {
         FlightLogFactory::createModel("acceleration[m/s]"),
         FlightLogFactory::createModel("rotation[deg/s]"),
+        nullptr, // magnetometer: avionics will not report magnetometer values
         FlightLogFactory::createModel("pressure[m/s]"),
+        FlightLogFactory::createModel("temperature[C]"),
         FlightLogFactory::createModel("altitude[m]"),
         FlightLogFactory::createModel("velocity[m/s]"),
         nullptr, // radiation: no sensor on avionics
@@ -45,15 +48,20 @@ int main(int argc, char *argv[])
     FlightModels payloadModels = {
         FlightLogFactory::createModel("acceleration[m/s]"),
         FlightLogFactory::createModel("rotation[deg/s]"),
+        FlightLogFactory::createModel("teslas[T]"),
         FlightLogFactory::createModel("pressure[m/s]"),
+        FlightLogFactory::createModel("temperature[C]"),
         FlightLogFactory::createModel("altitude[m]"),
-        FlightLogFactory::createModel("velocity[m/s]"),
+        nullptr, // speed: will not report velocity
         FlightLogFactory::createModel("cosmic_radiation[c/m]"),
         nullptr, // location: no GPS on the payload
-        nullptr  // state: flight-phase state machine lives on avionics
+        nullptr // state: flight-phase state machine lives on avionics
     };
 
-    MissionManager* missionManager = new MissionManager(avionicsModels);
+    MissionManager* missionManager = new MissionManager(avionicsModels, payloadModels);
+
+    HeartbeatModel* avionicsHeartbeat = new HeartbeatModel(&app);
+    HeartbeatModel* payloadHeartbeat = new HeartbeatModel(&app);
 
     //Serial reader & Parse packer
     SerialReader* serialReader = new SerialReader(&app);
@@ -99,9 +107,23 @@ int main(int argc, char *argv[])
                          qreal magnitude = std::sqrt(x*x + y*y + z*z);
                          modelsFor(compid).rotation->appendData(elapsedTimer->elapsed(), magnitude);
                      });
+    QObject::connect(parser, &PacketParser::magnetometerReceived,
+                     [modelsFor, elapsedTimer](double x, double y, double z, uint8_t compid) {
+                         qreal magnitude = std::sqrt(x*x + y*y + z*z);
+                         modelsFor(compid).magnetometer->appendData(elapsedTimer->elapsed(), magnitude);
+                     });
+    QObject::connect(parser, &PacketParser::temperatureReceived,
+                     [modelsFor, elapsedTimer](double value, uint8_t compid) {
+                         modelsFor(compid).temperature->appendData(elapsedTimer->elapsed(), value);
+                     });
     QObject::connect(parser, &PacketParser::radiationReceived,
                      [payloadModels, elapsedTimer](double value) {
                          payloadModels.radiation->appendData(elapsedTimer->elapsed(), value);
+                     });
+    QObject::connect(parser, &PacketParser::heartbeatReceived,
+                     [avionicsHeartbeat, payloadHeartbeat](uint8_t compid) {
+                         HeartbeatModel* model = compid == HorizonComponent::Payload ? payloadHeartbeat : avionicsHeartbeat;
+                         model->recordBeat();
                      });
 
     QObject::connect(serialReader, &SerialReader::errorOccurred,
@@ -130,6 +152,7 @@ int main(int argc, char *argv[])
     qmlRegisterType<TimeWindowProxyModel>("com.horizon.components", 1, 0, "TimeWindowProxyModel");
     qmlRegisterType<HumidityCollection>("HumidityCollection", 1, 0, "HumidityCollection");
     qmlRegisterType<FlightStateModel>("com.horizon.components", 1, 0, "FlightStateModel");
+    qmlRegisterType<HeartbeatModel>("com.horizon.components", 1, 0, "HeartbeatModel");
 
 
     engine.rootContext()->setContextProperty("missionManager", missionManager );
@@ -139,18 +162,24 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty( "avionicsAccelerationM", avionicsModels.acceleration);
     engine.rootContext()->setContextProperty( "avionicsRotationM", avionicsModels.rotation);
     engine.rootContext()->setContextProperty( "avionicsPressureM", avionicsModels.pressure);
+    engine.rootContext()->setContextProperty( "avionicsTemperatureM", avionicsModels.temperature);
     engine.rootContext()->setContextProperty( "avionicsAltitudeM", avionicsModels.altitude);
     engine.rootContext()->setContextProperty( "avionicsVelocityM", avionicsModels.velocity);
 
     engine.rootContext()->setContextProperty( "payloadAccelerationM", payloadModels.acceleration);
     engine.rootContext()->setContextProperty( "payloadRotationM", payloadModels.rotation);
+    engine.rootContext()->setContextProperty( "payloadMagnetometerM", payloadModels.magnetometer);
     engine.rootContext()->setContextProperty( "payloadPressureM", payloadModels.pressure);
+    engine.rootContext()->setContextProperty( "payloadTemperatureM", payloadModels.temperature);
     engine.rootContext()->setContextProperty( "payloadAltitudeM", payloadModels.altitude);
     engine.rootContext()->setContextProperty( "payloadVelocityM", payloadModels.velocity);
     engine.rootContext()->setContextProperty( "payloadRadiationM", payloadModels.radiation);
 
     engine.rootContext()->setContextProperty("locationM", locationModel);
     engine.rootContext()->setContextProperty( "stateM", stateModel );
+
+    engine.rootContext()->setContextProperty( "avionicsHeartbeatM", avionicsHeartbeat);
+    engine.rootContext()->setContextProperty( "payloadHeartbeatM", payloadHeartbeat);
 
     // Connect to state transitions to log them
     QObject::connect(stateModel, &FlightStateModel::stateTransition,

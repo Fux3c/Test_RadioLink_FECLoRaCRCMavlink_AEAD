@@ -3,7 +3,7 @@
 #include <cmath>
 
 CountupTimer::CountupTimer(QObject *parent)
-    : QObject(parent), m_startValue(-10.0), m_running(false)
+    : QObject(parent), m_startValue(0.0), m_running(false)
 {
     connect(&m_updateTimer, &QTimer::timeout, this, &CountupTimer::updateTime);
     // Update display more frequently for smoother appearance
