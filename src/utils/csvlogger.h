@@ -29,11 +29,7 @@ public slots:
 private:
     void writeRow(qint64 elapsedMs, uint8_t compid, const QString &metric,
                   const QString &v0, const QString &v1, const QString &v2);
-    // Commits buffered writes to physical storage (fsync/_commit), not just
-    // the OS page cache. Only this - not the per-row flush() - protects
-    // against losing the log tail to a power loss or OS crash, so it runs on
-    // a timer rather than every row to keep the (much more expensive) sync
-    // cost bounded.
+
     void syncToDisk();
 
     QFile m_file;
