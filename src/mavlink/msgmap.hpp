@@ -1,14 +1,7 @@
-
 #pragma once
 
 #include <algorithm>
-#ifdef FREEBSD
-#include <sys/endian.h>
-#elif __APPLE__
-#include <machine/endian.h>
-#else
-#include <endian.h>
-#endif
+#include "endian_compat.hpp"
 #include <type_traits>
 
 namespace mavlink {

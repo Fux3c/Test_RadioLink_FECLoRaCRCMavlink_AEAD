@@ -89,7 +89,7 @@ int main(int argc, char *argv[])
 
     engine.rootContext()->setContextProperty("serialReader", serialReader);
 
-    const QString port = SerialReader::findHorizonPort();
+    const QString port = serialReader->findHorizonPort();
     if (port.isEmpty()) {
         qDebug() << "Horizon module not found, no Arduino Nano 33 IoT based chip detected";
     } else if (serialReader->openPort(port, 115200)) {

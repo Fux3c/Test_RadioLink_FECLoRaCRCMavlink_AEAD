@@ -1,5 +1,6 @@
 #include "serialreader.h"
 #include <QDebug>
+#include <QTimer>
 
 SerialReader::SerialReader(QObject *parent)
     : QObject(parent)
@@ -9,6 +10,23 @@ SerialReader::SerialReader(QObject *parent)
             this, &SerialReader::handleReadyRead);
     connect(serialPort, &QSerialPort::errorOccurred,
             this, &SerialReader::handleError);
+
+    // Poll for disconnection every second
+    QTimer* watchdog = new QTimer(this);
+    connect(watchdog, &QTimer::timeout, this, [this]() {
+        if (!serialPort->isOpen()) {
+            // Try to reconnect
+            QString port = findHorizonPort();
+            if (!port.isEmpty()) {
+                qDebug() << "Watchdog reconnecting on" << port;
+                openPort(port, 115200);
+            }
+        } else if (serialPort->error() != QSerialPort::NoError) {
+            qDebug() << "Watchdog detected error, closing";
+            closePort();
+        }
+    });
+    watchdog->start(2000);
 }
 
 SerialReader::~SerialReader()
@@ -28,6 +46,7 @@ bool SerialReader::openPort(const QString &portName, qint32 baudRate)
     if (serialPort->open(QIODevice::ReadWrite)) {
         serialPort->setDataTerminalReady(false);
         qDebug() << "Serial port opened:" << portName << "at" << baudRate << "baud";
+        emit isOpenChanged();
         return true;
     } else {
         emit errorOccurred("Failed to open port: " + serialPort->errorString());
@@ -39,6 +58,7 @@ void SerialReader::closePort()
 {
     if (serialPort->isOpen()) {
         serialPort->close();
+        emit isOpenChanged();
         qDebug() << "Serial port closed";
     }
 }
@@ -67,6 +87,8 @@ namespace {
 QString SerialReader::findHorizonPort()
 {
     const auto infos = QSerialPortInfo::availablePorts();
+    QString fallback;
+
     for (const QSerialPortInfo &info : infos) {
         if (info.hasVendorIdentifier() && info.hasProductIdentifier()
             && info.vendorIdentifier() == ARDUINO_VID
@@ -75,20 +97,41 @@ QString SerialReader::findHorizonPort()
                      << "(" << info.description() << ")";
             return info.portName();
         }
+        //for arduino test
+        /*if (info.vendorIdentifier() == ARDUINO_VID) {
+            fallback = info.portName();
+            qDebug() << "Found Arduino (fallback) on" << info.portName()
+                     << "PID:" << Qt::hex << info.productIdentifier();
+        }*/
     }
-    return {};
+    if (!fallback.isEmpty())
+        qDebug() << "Using fallback Arduino port:" << fallback;
+
+    return fallback;
+    //return {};
 }
 
 void SerialReader::handleReadyRead()
 {
-    emit rawPacketReceived(serialPort->readAll());
+   // emit rawPacketReceived(serialPort->readAll());
+    byteBuffer.append(serialPort->readAll());
+    while (true) {
+        int newlineIndex = byteBuffer.indexOf('\n');
+        if (newlineIndex == -1) break;
+        QByteArray packet = byteBuffer.left(newlineIndex + 1);
+        byteBuffer.remove(0, newlineIndex + 1);
+        emit rawPacketReceived(packet);
+    }
 }
 
 void SerialReader::handleError(QSerialPort::SerialPortError error)
 {
-    if (error != QSerialPort::NoError && error != QSerialPort::TimeoutError) {
+    if (error == QSerialPort::ResourceError ||
+        error == QSerialPort::DeviceNotFoundError) {
+        qDebug() << "Fatal serial error, closing port:" << serialPort->errorString();
+        closePort();
+    } else if (error != QSerialPort::NoError && error != QSerialPort::TimeoutError) {
         emit errorOccurred(serialPort->errorString());
         qDebug() << "Serial error:" << serialPort->errorString();
-        qDebug() << "Serial error code:" << error << serialPort->errorString();
     }
 }
