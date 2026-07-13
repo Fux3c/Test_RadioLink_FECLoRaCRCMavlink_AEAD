@@ -22,6 +22,7 @@ SOURCES += \
         src/humiditycontroller.cpp \
         src/timer.cpp \
         src/utils/flightlogfactory.cpp \
+        src/utils/csvlogger.cpp \
         src/utils/humidityutils.cpp \
         src/models/humiditymodel.cpp \
         src/utils/timeseriesfactory.cpp \
@@ -40,6 +41,7 @@ HEADERS +=  \
     src/humiditycontroller.h \
     src/timer.h \
     src/utils/flightlogfactory.h \
+    src/utils/csvlogger.h \
     src/utils/humidityutils.h \
     src/models/humiditymodel.h \
     src/utils/timeseriesfactory.h \

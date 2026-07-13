@@ -5,9 +5,11 @@
 #include <models/flightstatemodel.h>
 #include <models/heartbeatmodel.h>
 #include <utils/flightlogfactory.h>
+#include <utils/csvlogger.h>
 #include <QDateTime>
 #include <cmath>
 #include <QElapsedTimer>
+#include <QMessageBox>
 #include "humiditycollection.h"
 #include "missionmanager.h"
 #include "timer.h"
@@ -22,8 +24,6 @@ int main(int argc, char *argv[])
     QQmlApplicationEngine engine;
 
     engine.addImportPath( "qrc:" );
-
-    HumidityCollection* fmCollection = new HumidityCollection();
 
     FlightStateModel* stateModel = FlightLogFactory::createStateModel();
     LocationModel* locationModel = FlightLogFactory::createLocationModel();
@@ -58,7 +58,22 @@ int main(int argc, char *argv[])
         nullptr // state: flight-phase state machine lives on avionics
     };
 
-    MissionManager* missionManager = new MissionManager(avionicsModels, payloadModels);
+    CsvLogger* csvLogger = new CsvLogger(&app);
+    MissionManager* missionManager = new MissionManager(avionicsModels, payloadModels, *csvLogger);
+
+    // The mission log is a backup black box, if it can't be created, the
+    // ground station must not silently run without one. Exit app instead
+    QObject::connect(missionManager, &MissionManager::logFileFailed,
+                     [](const QString &path, const QString &error) {
+                         qCritical() << "CsvLogger: could not create mission log" << path << error;
+                         QMessageBox::critical(nullptr, "Mission log file error",
+                             QString("Could not create the mission log file:\n%1\n\n%2\n\n"
+                                     "Ratatoskr GS cannot run without keeping a backup telemetry log.").arg(path, error));
+                     });
+
+    if (!missionManager->startCapture()) {
+        return 1;
+    }
 
     HeartbeatModel* avionicsHeartbeat = new HeartbeatModel(&app);
     HeartbeatModel* payloadHeartbeat = new HeartbeatModel(&app);
@@ -82,48 +97,57 @@ int main(int argc, char *argv[])
     };
 
     QObject::connect(parser, &PacketParser::altitudeReceived,
-                     [modelsFor, elapsedTimer, timerReset](double value, uint8_t compid) {
+                     [modelsFor, elapsedTimer, timerReset, csvLogger](double value, uint8_t compid) {
                          if (!*timerReset) {
                              elapsedTimer->restart();
                              *timerReset = true;
                          }
                          modelsFor(compid).altitude->appendData(elapsedTimer->elapsed(), value);
+                         csvLogger->logScalar(elapsedTimer->elapsed(), compid, "altitude", value);
                      });
     QObject::connect(parser, &PacketParser::velocityReceived,
-                     [modelsFor, elapsedTimer](double value, uint8_t compid) {
+                     [modelsFor, elapsedTimer, csvLogger](double value, uint8_t compid) {
                          modelsFor(compid).velocity->appendData(elapsedTimer->elapsed(), value);
+                         csvLogger->logScalar(elapsedTimer->elapsed(), compid, "velocity", value);
                      });
     QObject::connect(parser, &PacketParser::pressureReceived,
-                     [modelsFor, elapsedTimer](double value, uint8_t compid) {
+                     [modelsFor, elapsedTimer, csvLogger](double value, uint8_t compid) {
                          modelsFor(compid).pressure->appendData(elapsedTimer->elapsed(), value);
+                         csvLogger->logScalar(elapsedTimer->elapsed(), compid, "pressure", value);
                      });
     QObject::connect(parser, &PacketParser::accelerationReceived,
-                     [modelsFor, elapsedTimer](double x, double y, double z, uint8_t compid) {
+                     [modelsFor, elapsedTimer, csvLogger](double x, double y, double z, uint8_t compid) {
                          qreal magnitude = std::sqrt(x*x + y*y + z*z);
                          modelsFor(compid).acceleration->appendData(elapsedTimer->elapsed(), magnitude);
+                         csvLogger->logVector(elapsedTimer->elapsed(), compid, "acceleration", x, y, z);
                      });
     QObject::connect(parser, &PacketParser::rotationReceived,
-                     [modelsFor, elapsedTimer](double x, double y, double z, uint8_t compid) {
+                     [modelsFor, elapsedTimer, csvLogger](double x, double y, double z, uint8_t compid) {
                          qreal magnitude = std::sqrt(x*x + y*y + z*z);
                          modelsFor(compid).rotation->appendData(elapsedTimer->elapsed(), magnitude);
+                         csvLogger->logVector(elapsedTimer->elapsed(), compid, "rotation", x, y, z);
                      });
     QObject::connect(parser, &PacketParser::magnetometerReceived,
-                     [modelsFor, elapsedTimer](double x, double y, double z, uint8_t compid) {
+                     [modelsFor, elapsedTimer, csvLogger](double x, double y, double z, uint8_t compid) {
                          qreal magnitude = std::sqrt(x*x + y*y + z*z);
                          modelsFor(compid).magnetometer->appendData(elapsedTimer->elapsed(), magnitude);
+                         csvLogger->logVector(elapsedTimer->elapsed(), compid, "magnetometer", x, y, z);
                      });
     QObject::connect(parser, &PacketParser::temperatureReceived,
-                     [modelsFor, elapsedTimer](double value, uint8_t compid) {
+                     [modelsFor, elapsedTimer, csvLogger](double value, uint8_t compid) {
                          modelsFor(compid).temperature->appendData(elapsedTimer->elapsed(), value);
+                         csvLogger->logScalar(elapsedTimer->elapsed(), compid, "temperature", value);
                      });
     QObject::connect(parser, &PacketParser::radiationReceived,
-                     [payloadModels, elapsedTimer](double value) {
+                     [payloadModels, elapsedTimer, csvLogger](double value) {
                          payloadModels.radiation->appendData(elapsedTimer->elapsed(), value);
+                         csvLogger->logScalar(elapsedTimer->elapsed(), HorizonComponent::Payload, "radiation", value);
                      });
     QObject::connect(parser, &PacketParser::heartbeatReceived,
-                     [avionicsHeartbeat, payloadHeartbeat](uint8_t compid) {
+                     [avionicsHeartbeat, payloadHeartbeat, elapsedTimer, csvLogger](uint8_t compid) {
                          HeartbeatModel* model = compid == HorizonComponent::Payload ? payloadHeartbeat : avionicsHeartbeat;
                          model->recordBeat();
+                         csvLogger->logEvent(elapsedTimer->elapsed(), compid, "heartbeat");
                      });
 
     QObject::connect(serialReader, &SerialReader::errorOccurred,
@@ -156,8 +180,6 @@ int main(int argc, char *argv[])
 
 
     engine.rootContext()->setContextProperty("missionManager", missionManager );
-
-    engine.rootContext()->setContextProperty( "fmc", fmCollection );
 
     engine.rootContext()->setContextProperty( "avionicsAccelerationM", avionicsModels.acceleration);
     engine.rootContext()->setContextProperty( "avionicsRotationM", avionicsModels.rotation);
