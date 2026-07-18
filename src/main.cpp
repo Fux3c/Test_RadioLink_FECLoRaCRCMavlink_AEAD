@@ -14,7 +14,8 @@ uint8_t circ_mode = 0;
 // command mode status
 uint8_t cmd_mode = 0;
 
-#define SENDER
+//#define SENDER
+#define SIGNAL_STRENGTH_TEST
 
 static SX1280* radio = nullptr;
 
@@ -94,22 +95,26 @@ void loop() {
 
 #else
 
-    String received;
+    uint8_t received[128];
 
-    if (radio->receive(received) == RADIOLIB_ERR_NONE) {
+    if (radio->receive(received, 128) == RADIOLIB_ERR_NONE) {
 
-        Serial.println("Mottok: " + received);
 
+#ifdef SIGNAL_STRENGTH_TEST
         float rssi = radio->getRSSI();
-
         Serial.print("Packet RSSI: ");
         Serial.print(rssi);
         Serial.println(" dBm");
+#else
+        Serial.write(received, 128);
+#endif
+
     }
 
 #endif
 
-    sensorsPrintMetrics(currentTemp, thermalThrottling);
+    //sensorsPrintMetrics(currentTemp, thermalThrottling); not accepted by nidhoggr for now,
+    // maybe integrate it as a mavlink device in the future
 
     digitalWrite(LED, 1);
     digitalWrite(LED, 0);
