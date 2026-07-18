@@ -15,6 +15,7 @@ uint8_t circ_mode = 0;
 uint8_t cmd_mode = 0;
 
 //#define SENDER
+#define SIGNAL_STRENGTH_TEST
 
 static SX1280* radio = nullptr;
 
@@ -98,17 +99,16 @@ void loop() {
 
     if (radio->receive(received, 128) == RADIOLIB_ERR_NONE) {
 
-        Serial.print("Mottok: ");
-        for (int i = 0; i < 128; i++) {
-            Serial.print(received[i]);
-        }
-        Serial.println();
 
+#ifdef SIGNAL_STRENGTH_TEST
         float rssi = radio->getRSSI();
-
         Serial.print("Packet RSSI: ");
         Serial.print(rssi);
         Serial.println(" dBm");
+#else
+        Serial.write(received, 128);
+#endif
+
     }
 
 #endif

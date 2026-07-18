@@ -23,8 +23,8 @@ namespace config {
 
     constexpr float RADIO_FREQUENCY_MHZ = 2400.0f;
     constexpr float RADIO_BANDWIDTH_KHZ = 812.5f;
-    constexpr uint8_t RADIO_SPREADING_FACTOR = 9;
-    constexpr uint8_t RADIO_CODING_RATE = 7;
+    constexpr uint8_t RADIO_SPREADING_FACTOR = 11;
+    constexpr uint8_t RADIO_CODING_RATE = 8;
     constexpr uint8_t RADIO_SYNC_WORD = 18;
 
     constexpr float THERMAL_THROTTLE_THRESHOLD = 80.0f;
