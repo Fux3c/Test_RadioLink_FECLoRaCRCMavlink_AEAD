@@ -11,7 +11,7 @@ SerialReader::SerialReader(QObject *parent)
     connect(serialPort, &QSerialPort::errorOccurred,
             this, &SerialReader::handleError);
 
-    // Poll for disconnection every second
+    // Poll for disconnection every 2 seconds
     QTimer* watchdog = new QTimer(this);
     connect(watchdog, &QTimer::timeout, this, [this]() {
         if (!serialPort->isOpen()) {
@@ -21,8 +21,9 @@ SerialReader::SerialReader(QObject *parent)
                 qDebug() << "Watchdog reconnecting on" << port;
                 openPort(port, 115200);
             }
-        } else if (serialPort->error() != QSerialPort::NoError) {
-            qDebug() << "Watchdog detected error, closing";
+        } else if (serialPort->error() == QSerialPort::ResourceError
+                   || serialPort->error() == QSerialPort::DeviceNotFoundError) {
+            qDebug() << "Watchdog detected fatal error, closing";
             closePort();
         }
     });

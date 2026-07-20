@@ -105,8 +105,11 @@ ApplicationWindow {
                         console.log("No Horizon Module found")
                     }
                     else {
-                        serialReader.openPort(port, 115200)
-                        console.log("Reconnected on", port)
+                        if (serialReader.openPort(port, 115200)) {
+                            console.log("Reconnected on", port)
+                        } else {
+                            console.log("Failed to reconnect on", port)
+                        }
                     }
                 }
             }
