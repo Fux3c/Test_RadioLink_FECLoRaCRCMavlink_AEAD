@@ -11,7 +11,7 @@ PacketParser::PacketParser(QObject *parent) : QObject(parent)
 
 void PacketParser::parse(const QByteArray &data)
 {
-    qDebug() << "parse() bytes:" << data.size() << "hex:" << data.left(16).toHex(' ');
+    //qDebug() << "parse() bytes:" << data.size() << "hex:" << data.left(16).toHex(' ');
     for (int i = 0; i < data.size(); ++i) {
         const uint8_t byte = static_cast<uint8_t>(data.at(i));
         const uint8_t res = mavlink_frame_char(MAVLINK_COMM_0, byte, &m_msg, &m_status);
@@ -33,7 +33,7 @@ void PacketParser::parse(const QByteArray &data)
 
 void PacketParser::handleMessage(const mavlink_message_t &msg)
 {
-    qDebug() << "got message";
+    //qDebug() << "got message";
     switch (msg.msgid) {
     case MAVLINK_MSG_ID_SCALED_IMU: {
         mavlink_scaled_imu_t imu;
@@ -80,7 +80,8 @@ void PacketParser::handleMessage(const mavlink_message_t &msg)
         QLatin1StringView name(temp.name, strnlen(temp.name, sizeof(temp.name)));
 
         if (name == "BARO_T") {
-            emit temperatureReceived(temp.value, msg.compid);
+            emit temperatureReceived(temp.value / 100, msg.compid);
+            qDebug() << "temp: " << temp.value;
         } else if (name == "LORA_T") {
             // transceiver temperature
         } else if (name == "LORA_V") {

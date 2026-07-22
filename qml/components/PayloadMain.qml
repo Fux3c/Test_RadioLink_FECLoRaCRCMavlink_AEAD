@@ -97,8 +97,8 @@ RowLayout {
             timer: topBar.missionTimer
             Layout.preferredHeight: 2
             windowSize: 60      // Show last 120 seconds of data
-            yAxisMax: 500
-            yAxisMin: -500
+            yAxisMax: 2000
+            yAxisMin: 0
             yAxisInterval: 500
             yAxisLabel: "Counts per second (cps)"
             unitText: "cps"
