@@ -1,11 +1,22 @@
 #include "serialreader.h"
 #include <QDebug>
 #include <QTimer>
+#include <QSettings>
+
+// Arduino Nano 33 IoT: VID 0x2341, PID 0x8057
+namespace {
+constexpr quint16 ARDUINO_VID = 0x2341;
+constexpr quint16 NANO_33_IOT_PID = 0x8057;
+constexpr auto AUTO_RECONNECT_SETTINGS_KEY = "SerialReader/autoReconnectEnabled";
+}
 
 SerialReader::SerialReader(QObject *parent)
     : QObject(parent)
     , serialPort(new QSerialPort(this))
 {
+    QSettings settings;
+    m_autoReconnectEnabled = settings.value(AUTO_RECONNECT_SETTINGS_KEY, true).toBool();
+
     connect(serialPort, &QSerialPort::readyRead,
             this, &SerialReader::handleReadyRead);
     connect(serialPort, &QSerialPort::errorOccurred,
@@ -15,6 +26,8 @@ SerialReader::SerialReader(QObject *parent)
     QTimer* watchdog = new QTimer(this);
     connect(watchdog, &QTimer::timeout, this, [this]() {
         if (!serialPort->isOpen()) {
+            if (!m_autoReconnectEnabled)
+                return; // user chose to stay disconnected
             // Try to reconnect
             QString port = findHorizonPort();
             if (!port.isEmpty()) {
@@ -43,10 +56,10 @@ bool SerialReader::openPort(const QString &portName, qint32 baudRate)
     serialPort->setParity(QSerialPort::NoParity);
     serialPort->setStopBits(QSerialPort::OneStop);
     serialPort->setFlowControl(QSerialPort::NoFlowControl);
-
     if (serialPort->open(QIODevice::ReadWrite)) {
         serialPort->setDataTerminalReady(false);
         qDebug() << "Serial port opened:" << portName << "at" << baudRate << "baud";
+        setAutoReconnectEnabled(true); // re-arm on successful connect
         emit isOpenChanged();
         return true;
     } else {
@@ -79,50 +92,46 @@ QStringList SerialReader::availablePorts()
     return ports;
 }
 
-// Arduino Nano 33 IoT: VID 0x2341, PID 0x8057
-namespace {
-    constexpr quint16 ARDUINO_VID = 0x2341;
-    constexpr quint16 NANO_33_IOT_PID = 0x8057;
-}
-
 QString SerialReader::findHorizonPort()
 {
     const auto infos = QSerialPortInfo::availablePorts();
-    QString fallback;
-
     for (const QSerialPortInfo &info : infos) {
         if (info.hasVendorIdentifier() && info.hasProductIdentifier()
             && info.vendorIdentifier() == ARDUINO_VID
             && info.productIdentifier() == NANO_33_IOT_PID) {
             qDebug() << "Found Horizon module on" << info.portName()
-                     << "(" << info.description() << ")";
+            << "(" << info.description() << ")";
             return info.portName();
         }
-        //for arduino test
-        /*if (info.vendorIdentifier() == ARDUINO_VID) {
-            fallback = info.portName();
-            qDebug() << "Found Arduino (fallback) on" << info.portName()
-                     << "PID:" << Qt::hex << info.productIdentifier();
-        }*/
     }
-    if (!fallback.isEmpty())
-        qDebug() << "Using fallback Arduino port:" << fallback;
+    return {};
+}
 
-    return fallback;
-    //return {};
+bool SerialReader::autoReconnectEnabled() const
+{
+    return m_autoReconnectEnabled;
+}
+
+void SerialReader::setAutoReconnectEnabled(bool enabled)
+{
+    if (m_autoReconnectEnabled != enabled) {
+        m_autoReconnectEnabled = enabled;
+        QSettings settings;
+        settings.setValue(AUTO_RECONNECT_SETTINGS_KEY, enabled);
+        emit autoReconnectEnabledChanged();
+    }
+}
+
+void SerialReader::disconnectPort()
+{
+    // Deliberate user action: stop the watchdog from fighting them
+    setAutoReconnectEnabled(false);
+    closePort();
 }
 
 void SerialReader::handleReadyRead()
 {
-   // emit rawPacketReceived(serialPort->readAll());
-    byteBuffer.append(serialPort->readAll());
-    while (true) {
-        int newlineIndex = byteBuffer.indexOf('\n');
-        if (newlineIndex == -1) break;
-        QByteArray packet = byteBuffer.left(newlineIndex + 1);
-        byteBuffer.remove(0, newlineIndex + 1);
-        emit rawPacketReceived(packet);
-    }
+    emit rawPacketReceived(serialPort->readAll());
 }
 
 void SerialReader::handleError(QSerialPort::SerialPortError error)
