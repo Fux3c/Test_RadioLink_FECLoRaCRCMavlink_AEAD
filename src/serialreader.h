@@ -27,11 +27,11 @@ public:
 
 public slots:
     void setAutoReconnectEnabled(bool enabled);
-    void autoReconnectEnabledChanged();
 
 signals:
     void rawPacketReceived(const QByteArray &packet);
     void errorOccurred(const QString &error);
+    void autoReconnectEnabledChanged();
     void isOpenChanged();
 
 private slots:
