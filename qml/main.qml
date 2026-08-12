@@ -55,7 +55,15 @@ ApplicationWindow {
                 color: palette.buttonText
                 font.pixelSize: 12
             }
-        }
+            Text {
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.rightMargin: 120
+                    text: serialReader.isOpen ? "● Connected" : "○ Disconnected"
+                    color: serialReader.isOpen ? "#2CDE85" : "#ff4444"
+                    font.pixelSize: 16
+            }
+}
         Menu {
             title: qsTr("File")
             Action {
@@ -78,6 +86,38 @@ ApplicationWindow {
         Menu {
             title: qsTr("&Help")
             Action { text: qsTr("&About") }
+        }
+        Menu {
+            title: qsTr("&Connection")
+            Action {
+                text: serialReader.isOpen ? qsTr("● Connected") : qsTr("○ Disconnected")
+                enabled: false
+            }
+            MenuSeparator {}
+
+            Action {
+                text: qsTr("Reconnect")
+                enabled: !serialReader.isOpen
+                onTriggered: {
+                    var port = serialReader.findHorizonPort()
+                    if (port === ""){
+                        console.log("No Horizon Module found")
+                    }
+                    else {
+                        if (serialReader.openPort(port, 115200)) {
+                            console.log("Reconnected on", port)
+                        } else {
+                            console.log("Failed to reconnect on", port)
+                        }
+                    }
+                }
+            }
+
+            Action {
+                text: qsTr("Disconnect")
+                enabled: serialReader.isOpen
+                onTriggered: serialReader.closePort()
+            }
         }
     }
 
