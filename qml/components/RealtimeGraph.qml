@@ -82,18 +82,23 @@ Item {
             }
 
             // X-axis (time)
+            //
+            // Data carries absolute timestamps (ms). Instead of relabelling every
+            // point each frame, we scroll the axis window against the clock: the
+            // right edge tracks "now" and the left edge trails by windowSize.
             axisX: ValueAxis {
                 id: axisX
-                min: timeWindow.windowSize * 1000 * -1 // Convert to milliseconds
-                max: 0
+                readonly property real nowMs: timeWindow.currentTime * 1000
+                min: nowMs - timeWindow.windowSize * 1000
+                max: nowMs
                 tickInterval: timeWindow.windowSize * 1000 / 6
                 subTickCount: 1
                 labelDecimals: 0
                 titleText: "Time (milliseconds ago)"
 
-                // Custom label format to show as "X sec ago"
+                // Custom label format to show as "X sec ago" (now == 0s)
                 labelFormat: function(value) {
-                    return (-value / 1000).toFixed(0) + "s";
+                    return ((axisX.nowMs - value) / 1000).toFixed(0) + "s";
                 }
             }
 

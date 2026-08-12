@@ -2,7 +2,6 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Qt.labs.platform as Platform
-import FmControllers
 import HumidityCollection
 import com.horizon.components
 import "components"
@@ -148,9 +147,10 @@ ApplicationWindow {
 
                 TabBar {
                     id: tabBar
+                    property int tabWidth: 100
                     Layout.fillHeight: true
-                    Layout.preferredWidth: 100
-                    Layout.minimumWidth: 100
+                    Layout.preferredWidth: tabWidth
+                    Layout.minimumWidth: tabWidth
                     padding: 0
                     leftPadding: 0
                     rightPadding: 0
@@ -166,15 +166,56 @@ ApplicationWindow {
                     }
 
                     TabButton {
+                        id: avionicsTab
                         text: "Avionics"
                         rotation: 0
                         implicitHeight: tabBar.height / 2
-                        width: tabBar.width
+                        width: tabBar.tabWidth
+
+                        contentItem: Item {
+                            id: avionicsButtonContent
+
+                            Text {
+                                id: avionicsTabText
+                                text: avionicsTab.text
+                                color: avionicsTab.checked ? Material.accent : "#aaaaaa"
+                                anchors.horizontalCenter: avionicsButtonContent.horizontalCenter
+                                anchors.verticalCenter: avionicsButtonContent.verticalCenter
+                            }
+
+                             HeartbeatIndicator {
+                                model: avionicsHeartbeatM
+                                anchors.horizontalCenter: avionicsButtonContent.horizontalCenter
+                                anchors.top: avionicsTabText.bottom
+                            }
+
+                        }
                     }
                     TabButton {
+                        id: payloadTab
                         text: "Payload"
+                        rotation: 0
                         implicitHeight: tabBar.height / 2
-                        width: tabBar.width
+                        width: tabBar.tabWidth
+
+                        contentItem: Item {
+                            id: payloadButtonContent
+
+                            Text {
+                                id: payloadTabText
+                                text: payloadTab.text
+                                color: payloadTab.checked ? Material.accent : "#aaaaaa"
+                                anchors.horizontalCenter: payloadButtonContent.horizontalCenter
+                                anchors.verticalCenter: payloadButtonContent.verticalCenter
+                            }
+
+                             HeartbeatIndicator {
+                                model: payloadHeartbeatM
+                                anchors.horizontalCenter: payloadButtonContent.horizontalCenter
+                                anchors.top: payloadTabText.bottom
+                            }
+
+                        }
                     }
                 }
 

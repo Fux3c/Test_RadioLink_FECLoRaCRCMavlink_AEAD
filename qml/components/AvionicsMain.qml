@@ -19,14 +19,14 @@ RowLayout {
         RealtimeGraph {
             id: realtimeAccelerationGraph
             title: "Acceleration"
-            model: accelerationM
+            model: avionicsAccelerationM
             timer: topBar.missionTimer
             windowSize: 60       // Show last 60 seconds of data
-            yAxisMax: 300
-            yAxisMin: -300
-            yAxisInterval: 300
-            yAxisLabel: "Acceleration (m/s)^2"
-            unitText: "(m/s)²"
+            yAxisMax: 30
+            yAxisMin: -30
+            yAxisInterval: 30
+            yAxisLabel: "Acceleration (g)"
+            unitText: "g"
             lineColor: "#2CDE85"
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -35,7 +35,7 @@ RowLayout {
         RealtimeGraph {
             id: realtimeRotationGraph
             title: "Rotation"
-            model: rotationM
+            model: avionicsRotationM
             timer: topBar.missionTimer
             windowSize: 60      // Show last 120 seconds of data
             yAxisMax: 1000
@@ -50,11 +50,11 @@ RowLayout {
         RealtimeGraph {
             id: realtimePressureGraph
             title: "Pressure"
-            model: pressureM
+            model: avionicsPressureM
             timer: topBar.missionTimer
             windowSize: 60      // Show last 120 seconds of data
-            yAxisMax: 100
-            yAxisInterval: 50
+            yAxisMax: 1200
+            yAxisInterval: 300
             yAxisLabel: "Pressure (kPa)"
             unitText: "kPa"
             lineColor: "#DBEB00"
@@ -65,7 +65,7 @@ RowLayout {
         RealtimeGraph {
             id: realtimeAltitudeGraph
             title: "Altitude"
-            model: altitudeM
+            model: avionicsAltitudeM
             timer: topBar.missionTimer
             windowSize: 60      // Show last 120 seconds of data
             yAxisMax: 6000
@@ -80,7 +80,7 @@ RowLayout {
         RealtimeGraph {
             id: realtimeSpeedGraph
             title: "Speed"
-            model: velocityM
+            model: avionicsVelocityM
             timer: topBar.missionTimer
             windowSize: 60      // Show last 120 seconds of data
             yAxisMax: 500
@@ -132,6 +132,13 @@ RowLayout {
                 anchors.fill: parent
                 anchors.margins: 8
 
+                TimeWindowProxyModel {
+                    id: tempWindow
+                    sourceModel: avionicsTemperatureM
+                    timer: topBar.missionTimer
+                    windowSize: 60
+                }
+
                 Text {
                     id: tempLabel
                     text: qsTr("Temperature")
@@ -141,7 +148,15 @@ RowLayout {
 
                 Text {
                     id: tempValue
-                    text: qsTr("34 deg")
+                    text: {
+                        var _ = tempWindow.currentTime; // keep binding reactive to model updates
+                        if (tempWindow.rowCount() > 0) {
+                            var lastRow = tempWindow.rowCount() - 1;
+                            var value = tempWindow.data(tempWindow.index(lastRow, 1));
+                            return value !== undefined ? value.toFixed(1) + " deg" : "--- deg";
+                        }
+                        return "--- deg";
+                    }
                     color: "white"
                     font.pixelSize: 16
                 }

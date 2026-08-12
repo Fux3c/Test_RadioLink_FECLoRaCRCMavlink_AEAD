@@ -1,19 +1,18 @@
 #include "timewindowproxymodel.h"
-#include <QDebug>
 
 TimeWindowProxyModel::TimeWindowProxyModel(QObject *parent)
-    : QSortFilterProxyModel(parent),
+    : QAbstractProxyModel(parent),
     m_timer(nullptr),
     m_windowSize(60.0), // Default 60 second window
     m_invertTimeAxis(true),
-    m_lastTime(0.0)
+    m_lastTime(0.0),
+    m_lo(0),
+    m_count(0)
 {
-    // Set dynamic sort/filter to ensure updates work properly
-    setDynamicSortFilter(true);
-
-    // Update more frequently for smoother animation
-    connect(&m_updateTimer, &QTimer::timeout, this, &TimeWindowProxyModel::updateFilter);
-    m_updateTimer.start(50); // 50ms for smoother updates (20 fps)
+    // Drive the sliding window from a steady tick so old points expire even when
+    // no new data arrives. 50ms == 20fps, smooth enough for scrolling.
+    connect(&m_updateTimer, &QTimer::timeout, this, &TimeWindowProxyModel::tick);
+    m_updateTimer.start(50);
 }
 
 CountupTimer* TimeWindowProxyModel::timer() const
@@ -23,20 +22,20 @@ CountupTimer* TimeWindowProxyModel::timer() const
 
 void TimeWindowProxyModel::setTimer(CountupTimer* timer)
 {
-    if (m_timer != timer) {
-        if (m_timer) {
-            disconnect(m_timer, &CountupTimer::secondsChanged, this, &TimeWindowProxyModel::onTimerChanged);
-        }
+    if (m_timer == timer)
+        return;
 
-        m_timer = timer;
+    if (m_timer)
+        disconnect(m_timer, &CountupTimer::secondsChanged, this, &TimeWindowProxyModel::tick);
 
-        if (m_timer) {
-            connect(m_timer, &CountupTimer::secondsChanged, this, &TimeWindowProxyModel::onTimerChanged);
-        }
+    m_timer = timer;
 
-        emit timerChanged();
-        updateFilter();
-    }
+    if (m_timer)
+        connect(m_timer, &CountupTimer::secondsChanged, this, &TimeWindowProxyModel::tick);
+
+    emit timerChanged();
+    recompute(true);
+    emit currentTimeChanged();
 }
 
 double TimeWindowProxyModel::windowSize() const
@@ -46,11 +45,13 @@ double TimeWindowProxyModel::windowSize() const
 
 void TimeWindowProxyModel::setWindowSize(double size)
 {
-    if (m_windowSize != size) {
-        m_windowSize = size;
-        emit windowSizeChanged();
-        updateFilter();
-    }
+    if (m_windowSize == size)
+        return;
+
+    m_windowSize = size;
+    emit windowSizeChanged();
+    // The window can grow at the front, which is not a forward slide, so reset.
+    recompute(true);
 }
 
 bool TimeWindowProxyModel::invertTimeAxis() const
@@ -60,11 +61,11 @@ bool TimeWindowProxyModel::invertTimeAxis() const
 
 void TimeWindowProxyModel::setInvertTimeAxis(bool invert)
 {
-    if (m_invertTimeAxis != invert) {
-        m_invertTimeAxis = invert;
-        emit invertTimeAxisChanged();
-        invalidate(); // Need to recalculate all mappings
-    }
+    if (m_invertTimeAxis == invert)
+        return;
+
+    m_invertTimeAxis = invert;
+    emit invertTimeAxisChanged();
 }
 
 double TimeWindowProxyModel::currentTime() const
@@ -74,17 +75,40 @@ double TimeWindowProxyModel::currentTime() const
 
 QVariantMap TimeWindowProxyModel::get(int row) const
 {
-    if (!sourceModel() || row < 0 || row >= rowCount())
+    if (!sourceModel() || row < 0 || row >= m_count)
         return QVariantMap();
 
-    QModelIndex srcIndex = mapToSource(index(row, 0));
     QVariantMap result;
     QMetaObject::invokeMethod(
         const_cast<QAbstractItemModel*>(sourceModel()), "get",
         Q_RETURN_ARG(QVariantMap, result),
-        Q_ARG(int, srcIndex.row())
+        Q_ARG(int, m_lo + row)
     );
     return result;
+}
+
+void TimeWindowProxyModel::setSourceModel(QAbstractItemModel *sourceModel)
+{
+    if (this->sourceModel()) {
+        disconnect(this->sourceModel(), nullptr, this, nullptr);
+    }
+
+    QAbstractProxyModel::setSourceModel(sourceModel);
+
+    if (sourceModel) {
+        connect(sourceModel, &QAbstractItemModel::rowsInserted,
+                this, &TimeWindowProxyModel::onSourceRowsInserted);
+        connect(sourceModel, &QAbstractItemModel::rowsRemoved,
+                this, &TimeWindowProxyModel::onSourceReset);
+        connect(sourceModel, &QAbstractItemModel::modelReset,
+                this, &TimeWindowProxyModel::onSourceReset);
+        connect(sourceModel, &QAbstractItemModel::layoutChanged,
+                this, &TimeWindowProxyModel::onSourceReset);
+        connect(sourceModel, &QAbstractItemModel::dataChanged,
+                this, &TimeWindowProxyModel::onSourceDataChanged);
+    }
+
+    recompute(true);
 }
 
 QModelIndex TimeWindowProxyModel::mapFromSource(const QModelIndex &sourceIndex) const
@@ -92,78 +116,170 @@ QModelIndex TimeWindowProxyModel::mapFromSource(const QModelIndex &sourceIndex) 
     if (!sourceIndex.isValid())
         return QModelIndex();
 
-    return QSortFilterProxyModel::mapFromSource(sourceIndex);
+    const int row = sourceIndex.row() - m_lo;
+    if (row < 0 || row >= m_count)
+        return QModelIndex();
+
+    return createIndex(row, sourceIndex.column());
 }
 
 QModelIndex TimeWindowProxyModel::mapToSource(const QModelIndex &proxyIndex) const
 {
-    if (!proxyIndex.isValid())
+    if (!proxyIndex.isValid() || !sourceModel())
         return QModelIndex();
 
-    return QSortFilterProxyModel::mapToSource(proxyIndex);
+    return sourceModel()->index(m_lo + proxyIndex.row(), proxyIndex.column());
 }
 
-bool TimeWindowProxyModel::filterAcceptsRow(int source_row, const QModelIndex &source_parent) const
+QModelIndex TimeWindowProxyModel::index(int row, int column, const QModelIndex &parent) const
 {
-    if (!m_timer)
-        return true;
+    if (parent.isValid() || row < 0 || row >= m_count || column < 0 || column >= columnCount())
+        return QModelIndex();
 
-    QModelIndex timeIndex = sourceModel()->index(source_row, 0, source_parent);
-    double timeValue = sourceModel()->data(timeIndex, Qt::DisplayRole).toDouble();
-
-    // Get current time from timer
-    double currentTime = m_timer->seconds() * 1000.0; // Convert to ms to match data
-
-    // Keep only data points within the time window
-    return (timeValue <= currentTime) && (timeValue >= (currentTime - m_windowSize * 1000.0));
+    return createIndex(row, column);
 }
 
-QVariant TimeWindowProxyModel::data(const QModelIndex &index, int role) const
+QModelIndex TimeWindowProxyModel::parent(const QModelIndex &) const
 {
-    if (!index.isValid())
-        return QVariant();
+    return QModelIndex();
+}
 
-    // Handle special roles for the proxy model
-    if (role == Qt::DisplayRole || role == Qt::EditRole) {
-        if (index.column() == 0 && m_invertTimeAxis) {
-            // Get the source data
-            QModelIndex sourceIndex = mapToSource(index);
-            double timeValue = sourceModel()->data(sourceIndex, role).toDouble();
+int TimeWindowProxyModel::rowCount(const QModelIndex &parent) const
+{
+    if (parent.isValid())
+        return 0;
+    return m_count;
+}
 
-            // Calculate time relative to current time
-            double currentTime = m_timer ? m_timer->seconds() * 1000.0 : 0.0;
+int TimeWindowProxyModel::columnCount(const QModelIndex &parent) const
+{
+    if (parent.isValid() || !sourceModel())
+        return 0;
+    return sourceModel()->columnCount();
+}
 
-            // Return negative offset: 0 = newest, -windowSize*1000 = oldest
-            return timeValue - currentTime;
-        }
+double TimeWindowProxyModel::sourceTime(int sourceRow) const
+{
+    return sourceModel()->data(sourceModel()->index(sourceRow, 0), Qt::DisplayRole).toDouble();
+}
+
+int TimeWindowProxyModel::lowerBound(double valueMs, int srcRows) const
+{
+    int lo = 0, hi = srcRows;
+    while (lo < hi) {
+        const int mid = lo + (hi - lo) / 2;
+        if (sourceTime(mid) < valueMs)
+            lo = mid + 1;
+        else
+            hi = mid;
+    }
+    return lo;
+}
+
+int TimeWindowProxyModel::upperBound(double valueMs, int srcRows) const
+{
+    int lo = 0, hi = srcRows;
+    while (lo < hi) {
+        const int mid = lo + (hi - lo) / 2;
+        if (sourceTime(mid) <= valueMs)
+            lo = mid + 1;
+        else
+            hi = mid;
+    }
+    return lo;
+}
+
+void TimeWindowProxyModel::recompute(bool forceReset)
+{
+    const int srcRows = sourceModel() ? sourceModel()->rowCount() : 0;
+
+    int newLo, newCount;
+    if (srcRows <= 0) {
+        newLo = 0;
+        newCount = 0;
+    } else if (!m_timer) {
+        // No clock yet: show the whole source so static/imported data still renders.
+        newLo = 0;
+        newCount = srcRows;
+    } else {
+        const double currentMs = m_timer->seconds() * 1000.0;
+        const double lowMs = currentMs - m_windowSize * 1000.0;
+        const int lo = lowerBound(lowMs, srcRows);
+        const int hi = upperBound(currentMs, srcRows);
+        newLo = lo;
+        newCount = qMax(0, hi - lo);
     }
 
-    // For all other roles and columns, pass through to source model
-    return QSortFilterProxyModel::data(index, role);
-}
+    const int oldLo = m_lo;
+    const int oldCount = m_count;
+    const int oldHi = oldLo + oldCount;   // one-past-end (source coords)
+    const int newHi = newLo + newCount;
 
-void TimeWindowProxyModel::updateFilter()
-{
-    if (m_timer) {
-        double current = m_timer->seconds();
+    // Fast path: the window slid forward and still overlaps the previous one, so
+    // we can express the change as a front-removal plus a back-insertion.
+    const bool simpleSlide = !forceReset && oldCount > 0 &&
+                             newLo >= oldLo && newHi >= oldHi && newLo <= oldHi;
 
-        // Only invalidate if time has changed significantly
-        if (std::abs(current - m_lastTime) > 0.05) { // More sensitive threshold
-            m_lastTime = current;
+    if (!simpleSlide) {
+        beginResetModel();
+        m_lo = newLo;
+        m_count = newCount;
+        endResetModel();
+        return;
+    }
 
-            // Force update of all data points when time has changed
-            if (m_invertTimeAxis) {
-                emit dataChanged(index(0, 0), index(rowCount() - 1, columnCount() - 1));
-            }
+    const int removeFront = newLo - oldLo;
+    if (removeFront > 0) {
+        beginRemoveRows(QModelIndex(), 0, removeFront - 1);
+        m_lo = newLo;
+        m_count = oldCount - removeFront;
+        endRemoveRows();
+    }
 
-            // Update filter to show only points in the current time window
-            invalidateFilter();
-            emit currentTimeChanged();
-        }
+    const int addBack = newHi - oldHi;
+    if (addBack > 0) {
+        beginInsertRows(QModelIndex(), m_count, m_count + addBack - 1);
+        m_count += addBack;
+        endInsertRows();
     }
 }
 
-void TimeWindowProxyModel::onTimerChanged()
+void TimeWindowProxyModel::tick()
 {
-    updateFilter();
+    recompute(false);
+
+    const double cur = currentTime();
+    if (cur != m_lastTime) {
+        m_lastTime = cur;
+        emit currentTimeChanged();
+    }
+}
+
+void TimeWindowProxyModel::onSourceRowsInserted()
+{
+    // Appends slide the window forward; keep it incremental.
+    recompute(false);
+}
+
+void TimeWindowProxyModel::onSourceReset()
+{
+    recompute(true);
+}
+
+void TimeWindowProxyModel::onSourceDataChanged(const QModelIndex &topLeft,
+                                               const QModelIndex &bottomRight,
+                                               const QVector<int> &roles)
+{
+    if (!topLeft.isValid() || !bottomRight.isValid())
+        return;
+
+    // Clip the changed source range to the visible window and forward it.
+    const int first = qMax(topLeft.row(), m_lo);
+    const int last = qMin(bottomRight.row(), m_lo + m_count - 1);
+    if (first > last)
+        return;
+
+    emit dataChanged(index(first - m_lo, topLeft.column()),
+                     index(last - m_lo, bottomRight.column()),
+                     roles);
 }

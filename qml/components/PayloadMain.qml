@@ -24,7 +24,7 @@ RowLayout {
                 RealtimeGraph {
                     id: realtimeAccelerationGraph
                     title: "Acceleration"
-                    model: accelerationM
+                    model: payloadAccelerationM
                     timer: topBar.missionTimer
                     windowSize: 60       // Show last 60 seconds of data
                     yAxisMax: 300
@@ -40,7 +40,7 @@ RowLayout {
                 RealtimeGraph {
                     id: realtimeRotationGraph
                     title: "Rotation"
-                    model: rotationM
+                    model: payloadRotationM
                     timer: topBar.missionTimer
                     windowSize: 60      // Show last 120 seconds of data
                     yAxisMax: 1000
@@ -57,7 +57,7 @@ RowLayout {
                 RealtimeGraph {
                     id: realtimeAltitudeGraph
                     title: "Altitude"
-                    model: altitudeM
+                    model: payloadAltitudeM
                     timer: topBar.missionTimer
                     windowSize: 60      // Show last 120 seconds of data
                     yAxisMax: 6000
@@ -70,16 +70,16 @@ RowLayout {
                 }
 
                 RealtimeGraph {
-                    id: realtimeSpeedGraph
-                    title: "Speed"
-                    model: velocityM
+                    id: realtimeMagnetometerGraph
+                    title: "Magnetometer"
+                    model: payloadMagnetometerM
                     timer: topBar.missionTimer
                     windowSize: 60      // Show last 120 seconds of data
                     yAxisMax: 500
                     yAxisMin: -500
                     yAxisInterval: 500
-                    yAxisLabel: "Speed (m/s)"
-                    unitText: "m/s"
+                    yAxisLabel: "Teslas (T)"
+                    unitText: "T"
                     lineColor: "#DBEB00"
                     Layout.fillWidth: true
                     Layout.fillHeight: true
@@ -93,12 +93,12 @@ RowLayout {
          RealtimeGraph {
             id: realtimeRadiationGraph
             title: "Cosmic Radiation"
-            model: radiationM
+            model: payloadRadiationM
             timer: topBar.missionTimer
             Layout.preferredHeight: 2
             windowSize: 60      // Show last 120 seconds of data
-            yAxisMax: 500
-            yAxisMin: -500
+            yAxisMax: 2000
+            yAxisMin: 0
             yAxisInterval: 500
             yAxisLabel: "Counts per second (cps)"
             unitText: "cps"
@@ -147,6 +147,13 @@ RowLayout {
                 anchors.fill: parent
                 anchors.margins: 8
 
+                TimeWindowProxyModel {
+                    id: tempWindow
+                    sourceModel: payloadTemperatureM
+                    timer: topBar.missionTimer
+                    windowSize: 60
+                }
+
                 Text {
                     id: tempLabel
                     text: qsTr("Temperature")
@@ -156,7 +163,15 @@ RowLayout {
 
                 Text {
                     id: tempValue
-                    text: qsTr("34 deg")
+                    text: {
+                        var _ = tempWindow.currentTime; // keep binding reactive to model updates
+                        if (tempWindow.rowCount() > 0) {
+                            var lastRow = tempWindow.rowCount() - 1;
+                            var value = tempWindow.data(tempWindow.index(lastRow, 1));
+                            return value !== undefined ? value.toFixed(1) + " deg" : "--- deg";
+                        }
+                        return "--- deg";
+                    }
                     color: "white"
                     font.pixelSize: 16
                 }

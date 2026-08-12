@@ -3,6 +3,7 @@
 #pragma once
 #include <QObject>
 #include <QByteArray>
+#include <cstdint>
 #include "mavlink/HorizonDialect/mavlink.h"
 
 class PacketParser : public QObject
@@ -13,13 +14,17 @@ public:
     void parse(const QByteArray &data);
 
 signals:
-    void altitudeReceived(double value);
-    void velocityReceived(double value);
-    void accelerationReceived(double x, double y, double z);
-    void rotationReceived(double x, double y, double z);
-    void pressureReceived(double value);
+    // compid identifies which board sent the message (see horizoncomponents.h)
+    // so callers can route the sample into the right avionics/payload model.
+    void altitudeReceived(double value, uint8_t compid);
+    void velocityReceived(double value, uint8_t compid);
+    void accelerationReceived(double x, double y, double z, uint8_t compid);
+    void rotationReceived(double x, double y, double z, uint8_t compid);
+    void magnetometerReceived(double x, double y, double z, uint8_t compid);
+    void pressureReceived(double value, uint8_t compid);
     void radiationReceived(double value);
-    void temperatureReceived(double value);
+    void temperatureReceived(double value, uint8_t compid);
+    void heartbeatReceived(uint8_t compid);
 
 private:
     mavlink_message_t m_msg;

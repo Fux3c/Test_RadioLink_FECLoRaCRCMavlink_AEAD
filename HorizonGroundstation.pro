@@ -22,10 +22,12 @@ SOURCES += \
         src/humiditycontroller.cpp \
         src/timer.cpp \
         src/utils/flightlogfactory.cpp \
+        src/utils/csvlogger.cpp \
         src/utils/humidityutils.cpp \
         src/models/humiditymodel.cpp \
         src/utils/timeseriesfactory.cpp \
-        src/models/locationmodel.cpp
+        src/models/locationmodel.cpp \
+        src/models/heartbeatmodel.cpp
 
 HEADERS +=  \
     src/humiditycollection.h \
@@ -39,10 +41,12 @@ HEADERS +=  \
     src/humiditycontroller.h \
     src/timer.h \
     src/utils/flightlogfactory.h \
+    src/utils/csvlogger.h \
     src/utils/humidityutils.h \
     src/models/humiditymodel.h \
     src/utils/timeseriesfactory.h \
-    src/models/locationmodel.h
+    src/models/locationmodel.h \
+    src/models/heartbeatmodel.h
 
 		
 RESOURCES += qml/qml.qrc \
