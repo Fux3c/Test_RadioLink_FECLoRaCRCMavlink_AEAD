@@ -1,0 +1,33 @@
+connectors:
+  FC-1-X1B:  
+    type: WAGO 2601-1104
+    subtype: female
+    pinlabels: [GND, BGND1, BGND2, BAT]
+    image:
+      src: ../CATS-Wago.png
+    ignore_in_bom: true
+  F:
+    style: simple
+    type: Crimp ferrule
+    subtype: 0.5 mm²
+    color: YE
+  Battery-1:
+    type: XT60
+    subtype: female
+    pinlabels: [+, -]
+cables:
+  Power-1:
+    gauge: 0.5 mm2
+    length: 0.5
+    colors: [RD, BK]
+    wirecount: 2
+    shield: false
+    show_equiv: true
+
+connections:
+  -
+    - FC-1-X1B: [4,3]
+    - <-
+    - F.
+    - Power-1: [1, 2]
+    - Battery-1: [+, -]

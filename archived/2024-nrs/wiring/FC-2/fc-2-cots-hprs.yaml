@@ -1,0 +1,24 @@
+connectors:
+  FC-2-X4:
+    type: 2.54mm
+    subtype: female
+    pinlabels: [Servo1,5V,GND]
+  SRAD-HPRS-Servo:
+    type: 2.54mm
+    subtype: male
+    pinlabels: [Servo, 5V, GND]
+
+
+cables:
+  COTS-HPRS:
+    gauge: 1.0 mm2
+    length: 1.7
+    colors: [YE, RD, BK]
+    wirecount: 3
+    shield: false
+    show_equiv: true
+connections:
+  - 
+    - FC-2-X4: [1,2,3]
+    - COTS-HPRS: [1,2,3]
+    - SRAD-HPRS-Servo: [1,2,3]
