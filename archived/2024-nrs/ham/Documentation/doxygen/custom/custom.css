@@ -1,0 +1,20 @@
+@import url('https://fonts.cdnfonts.com/css/andromeda');
+                
+html {
+    --side-nav-arrow-hover-opacity: black;
+    #projectname {
+        font-family: 'andromeda', serif;
+    }
+    #projectbrief{
+        font-family: 'andromeda', serif;
+    }
+    div.header .title, div.header{
+        font-family: 'andromeda', serif;
+    }
+    h1, h2, h3, h4, h5, h6{
+        font-family: 'andromeda', serif;
+    }
+    div#nav-tree ul.children_ul ul.children_ul li div li div span#label{
+        font-family: 'andromeda', serif;
+    }
+}
