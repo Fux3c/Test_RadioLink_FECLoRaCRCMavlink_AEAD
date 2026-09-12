@@ -1,0 +1,3 @@
+[submodule "HAM"]
+	path = HAM
+	url = git@github.com:USN-Horizon/HAM.git
