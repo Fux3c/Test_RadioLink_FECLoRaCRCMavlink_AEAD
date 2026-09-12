@@ -1,0 +1,307 @@
+//    _   _ ____  _   _   _   _            _                
+//   | | | / ___|| \ | | | | | | ___  _ __(_)_______  _ __  
+//   | | | \___ \|  \| | | |_| |/ _ \| '__| |_  / _ \| '_ \ 
+//   | |_| |___) | |\  | |  _  | (_) | |  | |/ / (_) | | | |
+//    \___/|____/|_| \_| |_| |_|\___/|_|  |_/___\___/|_| |_|
+//                                                          
+//   Not Rocket Science 2024
+//   SRAD Power Distribution Unit - Software V0.1
+
+#include <SPI.h>
+#include <SD.h>
+#include <Wire.h>
+
+#define debug_mode true
+
+// --- Pin Definitions ---
+// I2C
+#define I2C_SDA 18
+#define I2C_SCL 19
+
+// SPI
+#define SPI_SS 10
+#define SPI_MOSI 11
+#define SPI_MISO 12
+#define SPI_SCK 13
+
+// UART
+#define UART_TX 0
+#define UART_RX 1
+
+// DIRECT ADC INPUT
+#define BAT_CS A7
+#define BAT_VS A6
+#define BAT_NTC A3
+#define SERVO1_CS A1
+#define AUX_CS A2
+
+// OUTPUT SHIFT REGISTER 1
+#define SRG1_SHCP 7
+#define SRG1_STCP 6
+#define SRG1_SER 5
+#define SRG1_OE 4 
+
+// ADC PARAMETERS
+#define ADC_ADDR 0b1001000
+const char ADC_CONF_MSB = 0b00000000;
+const char ADC_CONF_LSB = 0b10000011;
+
+// POWER CIRCUIT PARAMETERS 
+#define PWR_CIRCUITS 6 // Number of Circuits
+#define ADC_CHANNELS 8 // Number of Channels on the ADC
+#define PWR_OCP_TIME 100 // Time(ms) between Over Current Protection Samples
+#define PWR_OCP_LIMIT 10 // Number of Over Current Violations permitted before circuit shutdown.
+const int PWR_OCP_THRESHOLD[PWR_CIRCUITS] = {1000, 512, 512, 512, 512, 512};
+
+// PDU Operating Parameters
+bool logMode = false; // Logging to SD Card Enable/Disable
+bool fastMode = false; //Fast Mode for logging (To be used from take-off and onward)
+
+// SD Card File
+File logFile;  
+
+void reset() {
+  // TODO
+}
+
+void adcRead(int data[ADC_CHANNELS]){ // Reads from built-in ADC and external ADC 
+  // TODO
+}
+
+void registerWrite(char data){ // Shift register functionality
+
+  const unsigned int regSize = 8; // bits
+  
+  for (int i = 0; i < regSize; i++){
+    digitalWrite(SRG1_SER, bitRead(data, i));
+    digitalWrite(SRG1_SHCP, HIGH);
+    digitalWrite(SRG1_SHCP, LOW);
+  }
+  
+  digitalWrite(SRG1_STCP, HIGH);
+  digitalWrite(SRG1_STCP, LOW);
+  digitalWrite(SRG1_SER, LOW);
+  
+  #if debug_mode
+    Serial.println("Output Set");
+  #endif 
+}
+
+void sendData(){ //Function for sending data over serial to flight computer
+  // TODO
+}
+
+void updateOCP(int adc_data[ADC_CHANNELS], char enable_register){ // Over Current Protection
+  static unsigned int OC_CONDITIONS[PWR_CIRCUITS] = {0}; // Over-Current Counter for 6 circuits.
+  static unsigned long lastClock = 0;
+
+  if (millis() - lastClock > PWR_OCP_TIME){
+    for (int i = 0; i < PWR_CIRCUITS; i++){
+      if (adc_data[i] > PWR_OCP_THRESHOLD[i] && OC_CONDITIONS[i] < 10){
+        OC_CONDITIONS[i] += 1;
+        if(OC_CONDITIONS[i] >= PWR_OCP_LIMIT){
+          
+          #if debug_mode //OCP warning on UART
+            Serial.print("OCP: ");
+            Serial.println(i);
+          #endif
+          
+          // Shutdown power circuit
+          bitWrite(enable_register, i+2, 0);
+          registerWrite(enable_register);
+
+        }
+      } else if (OC_CONDITIONS[i] > 1){
+        OC_CONDITIONS[i] -= 1;
+      }
+    }
+    lastClock = millis();
+  }
+}
+
+void setup() {
+
+  // Setup for Shift Register 1 (set OE to High to wait for setup)
+  digitalWrite(SRG1_OE, HIGH);
+  registerWrite(0xFF);
+  digitalWrite(SRG1_OE, LOW);
+
+  // Pin Mode Definitions
+  pinMode(SRG1_SHCP,  OUTPUT);
+  pinMode(SRG1_STCP,  OUTPUT);
+  pinMode(SRG1_SER,   OUTPUT);
+  pinMode(SRG1_OE,    OUTPUT);
+  pinMode(UART_RX,    INPUT );
+  pinMode(UART_TX,    OUTPUT);
+  pinMode(BAT_CS,     INPUT );
+  pinMode(BAT_VS,     INPUT );
+  pinMode(BAT_NTC,    INPUT );
+  pinMode(SERVO1_CS,  INPUT );
+  pinMode(AUX_CS,     INPUT );
+  pinMode(SPI_SS,     OUTPUT);
+  pinMode(SPI_MOSI,   OUTPUT);
+  pinMode(SPI_MISO,   INPUT );
+  pinMode(SPI_SCK,    OUTPUT);
+
+
+  // UART Initialisation 
+  Serial.begin(9600);
+  
+  #if debug_mode
+    Serial.println();
+    Serial.println("PDU BOOTING...");
+  #endif
+
+  // I2C Initialisation
+  // Wire.begin();
+  // Wire.beginTransmission(ADC_ADDR);
+  // Wire.write(0x01); // Write to configuration register
+  // Wire.write(ADC_CONF_MSB);
+  // Wire.write(ADC_CONF_LSB);
+  // Wire.endTransmission();
+
+  // SD Card Initialisation
+  if(!SD.begin(SPI_SS))
+    #if debug_mode
+      Serial.println("ERROR: SD initialization failed!");
+    #endif
+  
+  #if debug_mode
+    Serial.println("SD initialization done.");
+  #endif
+
+  logFile = SD.open("log.txt", FILE_WRITE);
+  
+  logFile.print("PDU started in ");
+  logFile.print(millis());
+  logFile.println(" ms");
+  logFile.close();
+
+  #if debug_mode
+    Serial.print(millis());
+    Serial.println(" - Setup Complete.");
+  #endif
+
+}
+
+void loop() {
+  static unsigned long deltaTime;
+
+  deltaTime = millis();
+  
+  // ADC Readings
+  static int ADC_DATA[ADC_CHANNELS] = {0};
+
+  // Register for Power Circuit States (On=1/Off=0)
+  static char enable_register = 0x00;
+
+  // Serial instructions handler
+  if(Serial.available()){
+    int data = Serial.read();
+    switch(data){
+      // Enable and Disable Power Circuits
+      case /*0x00*/ 0x41: //CH0 Disable
+        bitWrite(enable_register, 2, 0);
+        break;
+      case /*0x01*/ 0x51: //CH0 Enable
+        bitWrite(enable_register, 2, 1);
+        break;
+      case /*0x10*/ 0x53: //CH1 Disable
+        bitWrite(enable_register, 3, 0);
+        break;
+      case /*0x11*/ 0x57: //CH1 Enable
+        bitWrite(enable_register, 3, 1);
+        break;
+      case /*0x20*/ 0x44: //CH2 Disable
+        bitWrite(enable_register, 4, 0);
+        break;
+      case /*0x21*/ 0x45: //CH2 Enable
+        bitWrite(enable_register, 4, 1);
+        break;
+      case /*0x30*/ 0x46: //CH3 Disable
+        bitWrite(enable_register, 5, 0);
+        break;
+      case /*0x31*/ 0x52: //CH3 Enable
+        bitWrite(enable_register, 5, 1);
+        break;
+      case /*0x40*/ 0x47: //CH4 Disable
+        bitWrite(enable_register, 6, 0);
+        break;
+      case /*0x41*/ 0x54: //CH4 Enable
+        bitWrite(enable_register, 6, 1);
+        break;
+      case /*0x50*/ 0x48: //CH5 Disable
+        bitWrite(enable_register, 7, 0);
+        break;
+      case /*0x51*/ 0x59: //CH5 Enable
+        bitWrite(enable_register, 7, 1);
+        break;
+      
+      // All Circuits Enable/Disable
+      case /*0xF0*/ 0x4A:
+        enable_register = 0x00;
+        break;
+      case /*0xF1*/ 0x55:
+        enable_register = 0xFF;
+        break;
+
+      // FC Requests
+      case 0xB0: // Send PDU Telemetry
+        sendData();
+        break;
+      case /*0xB1*/ 0x4F: // Enable Logging
+        logMode = true;
+        #if debug_mode
+          Serial.println("Enable Log Mode");
+        #endif
+        break;
+      case /*0xB2*/ 0x4C: // Disable Logging
+        logMode = false;
+        #if debug_mode
+          Serial.println("Disable Log Mode");
+        #endif
+        break;
+      case /*0xB3*/ 0xC5: // Enable Fast Log Mode
+        fastMode = true;
+        break;
+      case /*0xB4*/ 0xC6: // Disable Fast Log Mode
+        fastMode = false;
+        break;
+    }
+    registerWrite(enable_register);
+    updateOCP(ADC_DATA, enable_register);
+  }
+  if (logMode){
+    logFile = SD.open("log.txt", FILE_WRITE);
+    for (int i = 0; i < 512; i++){
+      logFile.print("A");
+    }
+    logFile.close();
+    
+  }
+
+  deltaTime = millis() - deltaTime;
+  
+  #if debug_mode // Debug Monitor
+
+    const int monitorDelay = 1000; //ms
+    static unsigned long lastMonitor = 0;
+    if (millis() >= monitorDelay + lastMonitor){
+      Serial.print("dT: ");
+      Serial.print(deltaTime);
+      Serial.print(", EREG: ");
+      for (int i = 0; i <= 7; i++){
+        Serial.print(bitRead(enable_register, i));
+      }
+
+      Serial.println();
+
+      lastMonitor = millis();
+    }
+
+  #endif
+
+}
+
+
+
