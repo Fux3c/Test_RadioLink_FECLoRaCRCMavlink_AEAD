@@ -20,5 +20,6 @@ Full project history via git subtree.
 | fc-notta | Ratatoskr-FC-Notta | Teensy 4.1 + FreeRTOS SRAD flight computer. Task architecture, filters, mocks and tests. State machine never implemented. |
 | cats-vega-configs | Ratatoskr-CATS-Vega-configurations | The COTS flight computer configurations that actually flew. |
 | gs-adapter-firmware | Ratatoskr-GS-adapter-firmware | 2.4 GHz SX1280 USB-LoRa bridge with FEM and thermal throttling. |
+| gs-nidhoggr | Ratatoskr-GS-Nidhoggr | Qt/QML ground station application with MAVLink emulator, flight state view and CSV logging. |
 | proto | mavlink (fork) | Horizon MAVLink dialect: ROCKET_STATE_TYPE, FLIGHT_STATES, PAYLOAD_TEMPERATURE, COSMIC_RADIATION. |
 | teensy-prototype-lab | teensy-flight-computer-prototype-LAB | Early Teensy prototype. README only. |
