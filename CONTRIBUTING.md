@@ -29,7 +29,7 @@ An example of a branch could be: */feature/sensor-interface*
 ## Workflow (Step by Step)
 <ol>
 <li>Create a branch. Give it a fitting type and name.</li>
-<li>Make changes on this branch.</li>
+<li>Make changes on this branch. Commit and push as usual.</li>
 <li>When finished, create a pull request.</li>
 <li>If merge conflicts arise, resolve them.</li>
 <li>Review the pull request with others and address eventual comments.</li>
@@ -41,9 +41,9 @@ An example of a branch could be: */feature/sensor-interface*
 
 [Here](https://github.com/StevenGonzalez/pull-request-playbook/blob/main/README.md) is a good writeup on best practices for pull requests with examples.
 
-- The name of a pull request should be clear and summarizing.
-    - A good name: *Fix: Fixed memory leak in FunctionName()*
-    - A bad name: *Updated stuff*
+- The name of a pull request should be clear and summarizing. It should also be marked with its branch type.
+    - A good name: [fix] Fixed memory leak in FunctionName()
+    - A bad name: Updated stuff
 - The description of a pull request is the most important part, it should describe:
     - **What was changed**
     - **Why it was changed**
@@ -53,3 +53,7 @@ An example of a branch could be: */feature/sensor-interface*
     Keywords are good enough, but remember: **The goal is to make sure someone else will get a clear view of what the pull request is about at a glance**.
 - Reviewing pull requests is just as important to the workflow as writing the code. Without reviews, the changes will never be integrated into the project! **Make sure to set aside some time to review code you've been assigned to review!**
 - If a pull request has gone stale (not touched in a long while), notify your team and make sure it gets seen.
+
+## Future improvements
+
+- Setup labels for GitHub pull requests. Easier to organize and locate.
