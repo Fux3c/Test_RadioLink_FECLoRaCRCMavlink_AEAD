@@ -7,7 +7,7 @@ void blinkTask(void *) {
   pinMode(PC13, OUTPUT);              // onboard LED, active low
   for (;;) {
     digitalToggle(PC13);
-    vTaskDelay(pdMS_TO_TICKS(500));
+    vTaskDelay(pdMS_TO_TICKS(1000));
   }
 }
 
@@ -17,7 +17,7 @@ void printTask(void *) {
     xSemaphoreTake(serialMutex, portMAX_DELAY);
     Serial.printf("tick %lu\n", n++);
     xSemaphoreGive(serialMutex);
-    vTaskDelay(pdMS_TO_TICKS(1000));
+    vTaskDelay(pdMS_TO_TICKS(10));
   }
 }
 
